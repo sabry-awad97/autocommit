@@ -227,11 +227,10 @@ impl ConfigCommand {
     }
 }
 
-pub fn get_config_data() -> Result<ConfigData> {
+pub fn get_config() -> Result<AutocommitConfig> {
     let config_command = ConfigCommand::Get {
         keys: vec![],
         config_path: None,
     };
-    let config_data = config_command.get_config()?.config_data;
-    Ok(config_data)
+    Ok(config_command.get_config()?)
 }

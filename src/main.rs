@@ -6,7 +6,7 @@ mod commands;
 
 use commands::{
     commit::CommitCommand,
-    config::{get_config_data, ConfigCommand},
+    config::{get_config, ConfigCommand},
 };
 
 #[derive(Debug, StructOpt)]
@@ -30,12 +30,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             config.run()?;
         }
         CLI::CommitCommand(commit) => {
-            commit.run()?;
-        },
+            let config = get_config()?;
+            commit.run(&config)?;
+        }
     }
 
-    let config = get_config_data()?;
-    println!("{:?}", config);
 
     Ok(())
 }
