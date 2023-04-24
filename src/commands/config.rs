@@ -145,22 +145,31 @@ impl ConfigCommand {
         let mut config = self.get_config()?;
         match self {
             ConfigCommand::Get { keys, .. } => {
-                for key in keys {
-                    match ConfigKey::from_str(key) {
-                        Some(ConfigKey::DescriptionEnabled) => {
-                            let value = config.config_data.description_enabled.to_string();
-                            println!("{} = {}", key.bold(), value.green());
-                        }
-                        Some(ConfigKey::EmojiEnabled) => {
-                            let value = config.config_data.emoji_enabled.to_string();
-                            println!("{} = {}", key.bold(), value.green());
-                        }
-                        Some(ConfigKey::Language) => {
-                            let value = format!("{:?}", config.config_data.language).to_lowercase();
-                            println!("{} = {}", key.bold(), value.green());
-                        }
-                        _ => {
-                            return Err(anyhow!("Unsupported config key: {}", key));
+                let config_data = config.config_data;
+
+                let description = config_data.description_enabled.to_string();
+                let emoji = config_data.emoji_enabled.to_string();
+                let language = format!("{:?}", config_data.language).to_lowercase();
+
+                if keys.is_empty() {
+                    println!("{} = {}", "description".bold(), description.green());
+                    println!("{} = {}", "emoji".bold(), emoji.green());
+                    println!("{} = {}", "language".bold(), language.green());
+                } else {
+                    for key in keys {
+                        match ConfigKey::from_str(key) {
+                            Some(ConfigKey::DescriptionEnabled) => {
+                                println!("{} = {}", key.bold(), description.green());
+                            }
+                            Some(ConfigKey::EmojiEnabled) => {
+                                println!("{} = {}", key.bold(), emoji.green());
+                            }
+                            Some(ConfigKey::Language) => {
+                                println!("{} = {}", key.bold(), language.green());
+                            }
+                            _ => {
+                                return Err(anyhow!("Unsupported config key: {}", key));
+                            }
                         }
                     }
                 }
