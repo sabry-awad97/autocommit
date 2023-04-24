@@ -10,8 +10,9 @@ use super::config::AutocommitConfig;
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
 
-fn get_prompt(locale: &str, diff: &str) -> String {
-    format!("Write a git commit message in present tense for the following diff without prefacing it with anything. Do not be needlessly verbose and make sure the answer is concise and to the point. The response must be in the language {}: \n{}", locale, diff)
+fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
+    let language = format!("{:?}", config.config_data.language).to_lowercase();
+    format!("Write a git commit message in present tense for the following diff without prefacing it with anything. Do not be needlessly verbose and make sure the answer is concise and to the point. The response must be in the language {}: \n{}", language, diff)
 }
 
 impl CommitCommand {
@@ -26,7 +27,7 @@ impl CommitCommand {
         let staged_diff = get_staged_diff(&[]).await?;
         let prompt = Message {
             role: MessageRole::User,
-            content: get_prompt("english", &staged_diff),
+            content: get_prompt(config, &staged_diff),
         };
 
         let mesage: String = generate_message(&[prompt]).await?;

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-enum Language {
+pub enum Language {
     English,
     // Add more languages as needed
 }
@@ -34,15 +34,15 @@ impl ConfigKey {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AutocommitConfig {
     #[serde(rename = "config")]
-    config_data: ConfigData,
+    pub config_data: ConfigData,
 }
 
 // This struct represents the configuration data
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigData {
-    description_enabled: bool,
-    emoji_enabled: bool,
-    language: Language,
+    pub description_enabled: bool,
+    pub emoji_enabled: bool,
+    pub language: Language,
 }
 
 impl AutocommitConfig {
