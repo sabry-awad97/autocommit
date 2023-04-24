@@ -4,11 +4,11 @@ use structopt::StructOpt;
 use super::config::AutocommitConfig;
 
 #[derive(Debug, StructOpt)]
-pub enum CommitCommand {}
+pub struct CommitCommand {}
 
 impl CommitCommand {
     pub fn run(&self, config: &AutocommitConfig) -> Result<()> {
         println!("{:?}", config);
-        todo!()
+        Ok(())
     }
 }
