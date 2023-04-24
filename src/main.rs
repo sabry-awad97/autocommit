@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         Command::CommitCommand(commit) => {
             let config = get_config()?;
-            commit.run(&config)?;
+            commit.run(&config).await?;
         }
     }
 

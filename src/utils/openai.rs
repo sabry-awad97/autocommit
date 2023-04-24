@@ -195,18 +195,14 @@ impl OpenAI {
 }
 
 struct Generator {
-    api_key: String,
     openai: OpenAI,
 }
 
 impl Generator {
     fn new(api_key: &str) -> Self {
-        let config: OAIConfig = OAIConfig::new(ApiEndpoint::FreeEndpoint, "".to_string());
+        let config: OAIConfig = OAIConfig::new(ApiEndpoint::FreeEndpoint, api_key.to_string());
         let openai: OpenAI = OpenAI::new(config);
-        Generator {
-            api_key: api_key.to_string(),
-            openai,
-        }
+        Self { openai }
     }
 
     async fn generate(&mut self, prompt: &[Message]) -> anyhow::Result<String> {
