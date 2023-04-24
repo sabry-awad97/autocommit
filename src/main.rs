@@ -4,10 +4,7 @@ use structopt::StructOpt;
 
 mod commands;
 
-use commands::{
-    commit::CommitCommand,
-    config::{get_config, ConfigCommand},
-};
+use commands::{get_config, Command};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -19,14 +16,6 @@ use commands::{
 struct CLI {
     #[structopt(subcommand)]
     command: Command,
-}
-
-#[derive(Debug, StructOpt)]
-enum Command {
-    #[structopt(name = "config")]
-    ConfigCommand(ConfigCommand),
-    #[structopt(name = "commit")]
-    CommitCommand(CommitCommand),
 }
 
 #[tokio::main]
