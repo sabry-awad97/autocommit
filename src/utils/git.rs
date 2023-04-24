@@ -15,7 +15,9 @@ pub async fn assert_git_repo() -> anyhow::Result<()> {
         })?;
 
     if !output.status.success() {
-        panic!("The current working directory is not a Git repository");
+        return Err(anyhow!(
+            "The current working directory is not a Git repository"
+        ));
     }
 
     Ok(())
