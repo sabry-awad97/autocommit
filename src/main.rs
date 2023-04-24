@@ -17,6 +17,9 @@ use commands::{get_config, Command};
 struct CLI {
     #[structopt(subcommand)]
     command: Command,
+
+    #[structopt(short, long)]
+    all: bool,
 }
 
 #[tokio::main]
@@ -29,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         Command::CommitCommand(commit) => {
             let config = get_config()?;
-            commit.run(&config).await?;
+            commit.run(&config, cli.all).await?;
         }
     }
 

@@ -21,6 +21,50 @@ pub async fn assert_git_repo() -> anyhow::Result<()> {
     Ok(())
 }
 
+pub async fn git_add_all() -> anyhow::Result<()> {
+    let output = Command::new("git").arg("add").arg("--all").output().await?;
+
+    if !output.status.success() {
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!("Error: {}", error_message));
+    }
+    Ok(())
+}
+
+pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
+    let lock_files = files
+        .iter()
+        .filter(|file| file.contains(".lock") || file.contains("-lock."))
+        .map(|s| exclude_from_diff(s))
+        .collect::<Vec<_>>();
+
+    if !lock_files.is_empty() {
+        eprintln!("Some files are '.lock' files which are excluded by default from 'git diff':\n");
+        for file in &lock_files {
+            eprintln!("{}", file);
+        }
+        eprintln!("No commit messages are generated for these files.");
+    }
+
+    let files_without_locks = files
+        .iter()
+        .filter(|file| !file.contains(".lock") && !file.contains("-lock."))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let output = Command::new("git")
+        .arg("diff")
+        .arg("--staged")
+        .args(files_without_locks)
+        .output()
+        .await
+        .map_err(|e| anyhow!("Failed to run git command: {}", e))?
+        .stdout;
+
+    let diff = String::from_utf8_lossy(&output).trim().to_owned();
+    Ok(diff)
+}
+
 fn exclude_from_diff(path: &str) -> String {
     format!(":(exclude){}", path)
 }
