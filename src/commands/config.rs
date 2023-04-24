@@ -181,8 +181,8 @@ impl ConfigCommand {
                         return Err(anyhow!("Invalid argument format"));
                     }
 
-                    let key = parts[0];
-                    let value = parts[1];
+                    let key = parts[0].trim();
+                    let value = parts[1].trim();
 
                     match ConfigKey::from_str(key) {
                         Some(ConfigKey::DescriptionEnabled) => match value.parse() {
