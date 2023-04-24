@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
@@ -10,67 +11,105 @@ enum Language {
     // Add more languages as needed
 }
 
+// This enum represents the configuration keys
+#[derive(Debug, PartialEq)]
+enum ConfigKey {
+    DescriptionEnabled,
+    EmojiEnabled,
+    Language,
+}
+
+impl ConfigKey {
+    fn from_str(key: &str) -> Option<ConfigKey> {
+        match key {
+            "description" => Some(ConfigKey::DescriptionEnabled),
+            "emoji" => Some(ConfigKey::EmojiEnabled),
+            "language" => Some(ConfigKey::Language),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Config {
+pub struct AutocommitConfig {
     #[serde(rename = "config")]
     config_data: ConfigData,
 }
 
+// This struct represents the configuration data
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigData {
-    description: bool,
-    emoji: bool,
+    description_enabled: bool,
+    emoji_enabled: bool,
     language: Language,
 }
 
-impl Config {
-    fn new() -> Config {
-        Config {
+impl AutocommitConfig {
+    fn new() -> AutocommitConfig {
+        AutocommitConfig {
             config_data: ConfigData {
-                description: false,
-                emoji: false,
+                description_enabled: false,
+                emoji_enabled: false,
                 language: Language::English,
             },
         }
     }
 
-    fn from_file(path: &PathBuf) -> Result<Config, String> {
-        let mut file = match File::open(path) {
-            Ok(file) => file,
-            Err(_) => return Err(format!("Failed to open config file: {}", path.display())),
-        };
+    // This function reads the configuration from a file
+    fn from_file(path: &PathBuf) -> Result<AutocommitConfig> {
+        let mut file = File::open(path)
+            .with_context(|| format!("Failed to open config file: {}", path.display()))?;
 
         let mut contents = String::new();
-        if let Err(_) = file.read_to_string(&mut contents) {
-            return Err(format!("Failed to read config file: {}", path.display()));
-        }
+        file.read_to_string(&mut contents)
+            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
 
         if contents.is_empty() {
-            return Err(format!("Config file is empty: {}", path.display()));
+            return Err(anyhow!("Config file is empty: {}", path.display()));
         }
 
-        match toml::from_str(&contents) {
-            Ok(config) => Ok(config),
-            Err(_) => Err(format!("Failed to parse config file: {}", path.display())),
-        }
+        toml::from_str(&contents)
+            .with_context(|| format!("Failed to parse config file: {}", path.display()))
     }
 
-    fn to_file(&self, path: &PathBuf) -> Result<(), String> {
-        let mut file = match OpenOptions::new().write(true).create(true).open(path) {
-            Ok(file) => file,
-            Err(_) => return Err(format!("Failed to create config file: {}", path.display())),
-        };
+    // This function writes the configuration to a file
+    fn to_file(&self, path: &PathBuf) -> Result<()> {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(path)
+            .with_context(|| format!("Failed to create config file: {}", path.display()))?;
 
-        let contents = match toml::to_string(self) {
-            Ok(contents) => contents,
-            Err(err) => return Err(format!("Failed to serialize config: {}", err)),
-        };
+        let contents = toml::to_string(self)
+            .with_context(|| format!("Failed to serialize config: {}", path.display()))?;
 
-        if let Err(_) = file.write_all(contents.as_bytes()) {
-            return Err(format!("Failed to write config file: {}", path.display()));
-        }
+        file.write_all(contents.as_bytes())
+            .with_context(|| format!("Failed to write config file: {}", path.display()))?;
 
         Ok(())
+    }
+
+    fn from_file_or_new(path: &PathBuf) -> Result<AutocommitConfig> {
+        match AutocommitConfig::from_file(path) {
+            Ok(config) => Ok(config),
+            Err(error) => {
+                if let Some(io_error) = error
+                    .source()
+                    .and_then(|e| e.downcast_ref::<std::io::Error>())
+                {
+                    if io_error.kind() == std::io::ErrorKind::NotFound {
+                        let new_config = AutocommitConfig::new();
+                        new_config.to_file(path)?;
+                        Ok(new_config)
+                    } else {
+                        Err(error)
+                            .context(format!("Failed to read config file: {}", path.display()))
+                    }
+                } else {
+                    Err(error).context(format!("Failed to read config file: {}", path.display()))
+                }
+            }
+        }
     }
 }
 
@@ -96,31 +135,28 @@ pub enum ConfigCommand {
 }
 
 impl ConfigCommand {
-    fn get_config(&self) -> Result<Config, String> {
-        let config = match Config::from_file(&self.get_config_path()) {
-            Ok(config) => config,
-            Err(_) => Config::new(),
-        };
+    fn get_config(&self) -> Result<AutocommitConfig> {
+        let config = AutocommitConfig::from_file_or_new(&self.get_config_path())?;
         Ok(config)
     }
 
-    pub fn run(&self) -> Result<(), String> {
+    pub fn run(&self) -> Result<()> {
         let mut config = self.get_config()?;
         match self {
             ConfigCommand::Get { keys, .. } => {
                 for key in keys {
-                    match key.as_str() {
-                        "description" => {
-                            println!("{}={}", key, config.config_data.description);
+                    match ConfigKey::from_str(key) {
+                        Some(ConfigKey::DescriptionEnabled) => {
+                            println!("{}={}", key, config.config_data.description_enabled);
                         }
-                        "emoji" => {
-                            println!("{}={}", key, config.config_data.emoji);
+                        Some(ConfigKey::EmojiEnabled) => {
+                            println!("{}={}", key, config.config_data.emoji_enabled);
                         }
-                        "language" => {
+                        Some(ConfigKey::Language) => {
                             println!("{}={:?}", key, config.config_data.language);
                         }
                         _ => {
-                            return Err(format!("Unsupported config key: {}", key));
+                            return Err(anyhow!("Unsupported config key: {}", key));
                         }
                     }
                 }
@@ -129,27 +165,27 @@ impl ConfigCommand {
                 for key_value in key_values {
                     let parts: Vec<&str> = key_value.splitn(2, '=').collect();
                     if parts.len() != 2 {
-                        return Err(String::from("Invalid argument format"));
+                        return Err(anyhow!("Invalid argument format"));
                     }
 
                     let key = parts[0];
                     let value = parts[1];
 
-                    match key {
-                        "description" => match value.parse() {
-                            Ok(value) => config.config_data.description = value,
-                            Err(_) => return Err(String::from("Invalid value for description")),
+                    match ConfigKey::from_str(key) {
+                        Some(ConfigKey::DescriptionEnabled) => match value.parse() {
+                            Ok(value) => config.config_data.description_enabled = value,
+                            Err(_) => return Err(anyhow!("Invalid value for description")),
                         },
-                        "emoji" => match value.parse() {
-                            Ok(value) => config.config_data.emoji = value,
-                            Err(_) => return Err(String::from("Invalid value for emoji")),
+                        Some(ConfigKey::EmojiEnabled) => match value.parse() {
+                            Ok(value) => config.config_data.emoji_enabled = value,
+                            Err(_) => return Err(anyhow!("Invalid value for emoji")),
                         },
-                        "language" => match value {
+                        Some(ConfigKey::Language) => match value {
                             "english" => config.config_data.language = Language::English,
-                            _ => return Err(String::from("Unsupported language")),
+                            _ => return Err(anyhow!("Unsupported language")),
                         },
                         _ => {
-                            return Err(format!("Unsupported config key: {}", key));
+                            return Err(anyhow!("Unsupported config key: {}", key));
                         }
                     }
                 }
@@ -178,7 +214,7 @@ impl ConfigCommand {
     }
 }
 
-pub fn get_config_data() -> Result<ConfigData, String> {
+pub fn get_config_data() -> Result<ConfigData> {
     let config_command = ConfigCommand::Get {
         keys: vec![],
         config_path: None,
