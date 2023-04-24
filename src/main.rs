@@ -3,6 +3,7 @@ use std::error::Error;
 use structopt::StructOpt;
 
 mod commands;
+mod utils;
 
 use commands::{get_config, Command};
 
