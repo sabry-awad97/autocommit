@@ -111,3 +111,17 @@ impl OAIRequest {
             .messages(messages)
     }
 }
+
+pub struct OAIConfig {
+    pub end_point: ApiEndpoint,
+    pub openai_api_key: String,
+}
+
+impl OAIConfig {
+    pub fn new(end_point: ApiEndpoint, openai_api_key: String) -> Self {
+        Self {
+            end_point,
+            openai_api_key,
+        }
+    }
+}
