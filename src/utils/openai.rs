@@ -1,7 +1,8 @@
-use std::fmt;
-
+use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
+use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ApiEndpoint {
@@ -123,5 +124,71 @@ impl OAIConfig {
             end_point,
             openai_api_key,
         }
+    }
+}
+
+pub struct OpenAI {
+    pub config: OAIConfig,
+}
+
+impl OpenAI {
+    pub fn new(config: OAIConfig) -> Self {
+        Self { config }
+    }
+
+    pub async fn send_request(&mut self, chat_request: &OAIRequest) -> Result<OAIResponse, Error> {
+        let mut end_point = &self.config.end_point;
+
+        let model = &chat_request.model;
+
+        if model.to_string().contains("gpt-4") {
+            end_point = &ApiEndpoint::FreeEndpoint;
+        }
+
+        let url = &end_point.to_string();
+
+        let response = reqwest::Client::new()
+            .post(url)
+            .header(
+                reqwest::header::CONTENT_TYPE,
+                HeaderValue::from_static("application/json"),
+            )
+            .bearer_auth(&self.config.openai_api_key)
+            .json(&chat_request)
+            .send()
+            .await
+            .with_context(|| format!("Failed to send request to {}", url))?;
+
+        match response.status() {
+            StatusCode::OK => {
+                let response = response
+                    .json::<OAIResponse>()
+                    .await
+                    .map_err(|err| anyhow!("Failed to decode json response: {}", err))?;
+                Ok(response)
+            }
+            StatusCode::TOO_MANY_REQUESTS => Err(anyhow!("Rate limit exceeded")),
+            _ => Err(anyhow!("Unexpected HTTP response: {:?}", response.status())),
+        }
+    }
+
+    pub async fn create_chat_completion(
+        &mut self,
+        model_name: OAIModel,
+        messages: impl Into<Vec<Message>>,
+        max_tokens: usize,
+    ) -> Result<OAIResponse, Error> {
+        let chat_request = OAIRequest::builder(model_name, messages)
+            .max_tokens::<u64>(max_tokens.try_into().unwrap())
+            .temperature(0.5)
+            .top_p(0.1)
+            .build()?;
+
+        let response = &self
+            .send_request(&chat_request)
+            .await
+            .map_err(|err| anyhow!("Failed to generate code: {}", err))?;
+
+        Ok(response.to_owned())
     }
 }
