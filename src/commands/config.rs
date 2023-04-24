@@ -12,7 +12,8 @@ enum Language {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-    config: ConfigData,
+    #[serde(rename = "config")]
+    config_data: ConfigData,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -25,7 +26,7 @@ pub struct ConfigData {
 impl Config {
     fn new() -> Config {
         Config {
-            config: ConfigData {
+            config_data: ConfigData {
                 description: false,
                 emoji: false,
                 language: Language::English,
@@ -110,13 +111,13 @@ impl ConfigCommand {
                 for key in keys {
                     match key.as_str() {
                         "description" => {
-                            println!("{}={}", key, config.config.description);
+                            println!("{}={}", key, config.config_data.description);
                         }
                         "emoji" => {
-                            println!("{}={}", key, config.config.emoji);
+                            println!("{}={}", key, config.config_data.emoji);
                         }
                         "language" => {
-                            println!("{}={:?}", key, config.config.language);
+                            println!("{}={:?}", key, config.config_data.language);
                         }
                         _ => {
                             return Err(format!("Unsupported config key: {}", key));
@@ -136,15 +137,15 @@ impl ConfigCommand {
 
                     match key {
                         "description" => match value.parse() {
-                            Ok(value) => config.config.description = value,
+                            Ok(value) => config.config_data.description = value,
                             Err(_) => return Err(String::from("Invalid value for description")),
                         },
                         "emoji" => match value.parse() {
-                            Ok(value) => config.config.emoji = value,
+                            Ok(value) => config.config_data.emoji = value,
                             Err(_) => return Err(String::from("Invalid value for emoji")),
                         },
                         "language" => match value {
-                            "english" => config.config.language = Language::English,
+                            "english" => config.config_data.language = Language::English,
                             _ => return Err(String::from("Unsupported language")),
                         },
                         _ => {
@@ -182,6 +183,6 @@ pub fn get_config_data() -> Result<ConfigData, String> {
         keys: vec![],
         config_path: None,
     };
-    let config_data = config_command.get_config()?.config;
+    let config_data = config_command.get_config()?.config_data;
     Ok(config_data)
 }
