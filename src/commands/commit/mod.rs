@@ -12,7 +12,9 @@ pub struct CommitCommand {}
 
 fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
     let language = format!("{:?}", config.config_data.language).to_lowercase();
-    format!("Write a git commit message in present tense for the following diff without prefacing it with anything. Do not be needlessly verbose and make sure the answer is concise and to the point. The response must be in the language {}: \n{}", language, diff)
+    format!("Write a git commit message in present tense for the following diff without prefacing it with anything. \
+    Do not be needlessly verbose and make sure the answer is concise and to the point. \
+    The response must be in the language {}: \n{}", language, diff)
 }
 
 impl CommitCommand {
