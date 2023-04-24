@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
+use dotenv::dotenv;
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -114,12 +115,12 @@ impl OAIRequest {
 }
 
 pub struct OAIConfig {
-    pub end_point: ApiEndpoint,
-    pub openai_api_key: String,
+    end_point: ApiEndpoint,
+    openai_api_key: String,
 }
 
 impl OAIConfig {
-    pub fn new(end_point: ApiEndpoint, openai_api_key: String) -> Self {
+    fn new(end_point: ApiEndpoint, openai_api_key: String) -> Self {
         Self {
             end_point,
             openai_api_key,
@@ -127,16 +128,16 @@ impl OAIConfig {
     }
 }
 
-pub struct OpenAI {
+struct OpenAI {
     pub config: OAIConfig,
 }
 
 impl OpenAI {
-    pub fn new(config: OAIConfig) -> Self {
+    fn new(config: OAIConfig) -> Self {
         Self { config }
     }
 
-    pub async fn send_request(&mut self, chat_request: &OAIRequest) -> Result<OAIResponse, Error> {
+    async fn send_request(&mut self, chat_request: &OAIRequest) -> Result<OAIResponse, Error> {
         let mut end_point = &self.config.end_point;
 
         let model = &chat_request.model;
@@ -172,7 +173,7 @@ impl OpenAI {
         }
     }
 
-    pub async fn create_chat_completion(
+    async fn create_chat_completion(
         &mut self,
         model_name: OAIModel,
         messages: impl Into<Vec<Message>>,
@@ -191,4 +192,44 @@ impl OpenAI {
 
         Ok(response.to_owned())
     }
+}
+
+struct Generator {
+    api_key: String,
+    openai: OpenAI,
+}
+
+impl Generator {
+    fn new(api_key: &str) -> Self {
+        let config: OAIConfig = OAIConfig::new(ApiEndpoint::FreeEndpoint, "".to_string());
+        let openai: OpenAI = OpenAI::new(config);
+        Generator {
+            api_key: api_key.to_string(),
+            openai,
+        }
+    }
+
+    async fn generate(&mut self, prompt: &[Message]) -> anyhow::Result<String> {
+        let response = self
+            .openai
+            .create_chat_completion(OAIModel::GPT4, prompt, 196)
+            .await?;
+
+        let result = response
+            .choices
+            .first()
+            .map(|choice| choice.message.content.clone())
+            .ok_or_else(|| anyhow!("No message returned"))?;
+
+        Ok(result)
+    }
+}
+
+pub async fn generate_message(prompt: &[Message]) -> anyhow::Result<String> {
+    dotenv().ok();
+    let openai_api_key = std::env::var("OPENAI_API_KEY")
+        .map_err(|_| anyhow!("Please set OPENAI_API_KEY environment variable"))?;
+
+    let mut gen = Generator::new(&openai_api_key);
+    gen.generate(prompt).await
 }
