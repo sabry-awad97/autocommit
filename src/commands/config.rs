@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use colored::*;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
@@ -147,13 +148,16 @@ impl ConfigCommand {
                 for key in keys {
                     match ConfigKey::from_str(key) {
                         Some(ConfigKey::DescriptionEnabled) => {
-                            println!("{}={}", key, config.config_data.description_enabled);
+                            let value = config.config_data.description_enabled.to_string();
+                            println!("{} = {}", key.bold(), value.green());
                         }
                         Some(ConfigKey::EmojiEnabled) => {
-                            println!("{}={}", key, config.config_data.emoji_enabled);
+                            let value = config.config_data.emoji_enabled.to_string();
+                            println!("{} = {}", key.bold(), value.green());
                         }
                         Some(ConfigKey::Language) => {
-                            println!("{}={:?}", key, config.config_data.language);
+                            let value = format!("{:?}", config.config_data.language).to_lowercase();
+                            println!("{} = {}", key.bold(), value.green());
                         }
                         _ => {
                             return Err(anyhow!("Unsupported config key: {}", key));
@@ -194,7 +198,7 @@ impl ConfigCommand {
                     return Err(error);
                 }
 
-                println!("Config successfully set");
+                println!("{}", "Config successfully set".green());
             }
         }
 
