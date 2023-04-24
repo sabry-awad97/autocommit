@@ -10,8 +10,13 @@ enum Language {
     // Add more languages as needed
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+    config: ConfigData,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ConfigData {
     description: bool,
     emoji: bool,
     language: Language,
@@ -20,42 +25,48 @@ pub struct Config {
 impl Config {
     fn new() -> Config {
         Config {
-            description: false,
-            emoji: false,
-            language: Language::English,
+            config: ConfigData {
+                description: false,
+                emoji: false,
+                language: Language::English,
+            },
         }
     }
 
     fn from_file(path: &PathBuf) -> Result<Config, String> {
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(_) => return Err(String::from("Failed to open config file")),
+            Err(_) => return Err(format!("Failed to open config file: {}", path.display())),
         };
 
         let mut contents = String::new();
         if let Err(_) = file.read_to_string(&mut contents) {
-            return Err(String::from("Failed to read config file"));
+            return Err(format!("Failed to read config file: {}", path.display()));
         }
 
-        match serde_yaml::from_str(&contents) {
+        if contents.is_empty() {
+            return Err(format!("Config file is empty: {}", path.display()));
+        }
+
+        match toml::from_str(&contents) {
             Ok(config) => Ok(config),
-            Err(_) => Err(String::from("Failed to parse config file")),
+            Err(_) => Err(format!("Failed to parse config file: {}", path.display())),
         }
     }
 
     fn to_file(&self, path: &PathBuf) -> Result<(), String> {
         let mut file = match OpenOptions::new().write(true).create(true).open(path) {
             Ok(file) => file,
-            Err(_) => return Err(String::from("Failed to create config file")),
+            Err(_) => return Err(format!("Failed to create config file: {}", path.display())),
         };
 
-        let contents = match serde_yaml::to_string(self) {
+        let contents = match toml::to_string(self) {
             Ok(contents) => contents,
             Err(err) => return Err(format!("Failed to serialize config: {}", err)),
         };
 
         if let Err(_) = file.write_all(contents.as_bytes()) {
-            return Err(String::from("Failed to write config file"));
+            return Err(format!("Failed to write config file: {}", path.display()));
         }
 
         Ok(())
@@ -99,13 +110,13 @@ impl ConfigCommand {
                 for key in keys {
                     match key.as_str() {
                         "description" => {
-                            println!("{}={}", key, config.description);
+                            println!("{}={}", key, config.config.description);
                         }
                         "emoji" => {
-                            println!("{}={}", key, config.emoji);
+                            println!("{}={}", key, config.config.emoji);
                         }
                         "language" => {
-                            println!("{}={:?}", key, config.language);
+                            println!("{}={:?}", key, config.config.language);
                         }
                         _ => {
                             return Err(format!("Unsupported config key: {}", key));
@@ -125,15 +136,15 @@ impl ConfigCommand {
 
                     match key {
                         "description" => match value.parse() {
-                            Ok(value) => config.description = value,
+                            Ok(value) => config.config.description = value,
                             Err(_) => return Err(String::from("Invalid value for description")),
                         },
                         "emoji" => match value.parse() {
-                            Ok(value) => config.emoji = value,
+                            Ok(value) => config.config.emoji = value,
                             Err(_) => return Err(String::from("Invalid value for emoji")),
                         },
                         "language" => match value {
-                            "english" => config.language = Language::English,
+                            "english" => config.config.language = Language::English,
                             _ => return Err(String::from("Unsupported language")),
                         },
                         _ => {
@@ -166,12 +177,11 @@ impl ConfigCommand {
     }
 }
 
-pub fn get_config() -> Result<Config, String> {
+pub fn get_config_data() -> Result<ConfigData, String> {
     let config_command = ConfigCommand::Get {
         keys: vec![],
         config_path: None,
     };
-    let config = config_command.get_config()?;
-
-    Ok(config)
+    let config_data = config_command.get_config()?.config;
+    Ok(config_data)
 }

@@ -4,7 +4,7 @@ use structopt::StructOpt;
 
 mod commands;
 
-use commands::config::{get_config, ConfigCommand};
+use commands::config::{get_config_data, ConfigCommand};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let config = get_config()?;
+    let config = get_config_data()?;
     println!("{:?}", config);
 
     Ok(())
