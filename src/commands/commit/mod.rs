@@ -8,6 +8,7 @@ pub enum CommitCommand {}
 
 impl CommitCommand {
     pub fn run(&self, config: &AutocommitConfig) -> Result<()> {
+        println!("{:?}", config);
         todo!()
     }
 }

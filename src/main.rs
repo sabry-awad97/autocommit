@@ -14,7 +14,7 @@ use commands::{
     name = "autocommit",
     version = "1.0.0",
     about = "A powerful CLI tool that helps you create professional and meaningful commits with ease, using AI to generate impressive commit messages in seconds. Take control of your code history and make it shine with autocommit!",
-    alias = "cm"
+    alias = "ac"
 )]
 enum CLI {
     #[structopt(name = "config")]
@@ -34,7 +34,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
             commit.run(&config)?;
         }
     }
-
 
     Ok(())
 }
