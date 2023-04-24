@@ -4,7 +4,10 @@ use structopt::StructOpt;
 
 mod commands;
 
-use commands::config::{get_config_data, ConfigCommand};
+use commands::{
+    commit::CommitCommand,
+    config::{get_config_data, ConfigCommand},
+};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -16,6 +19,8 @@ use commands::config::{get_config_data, ConfigCommand};
 enum CLI {
     #[structopt(name = "config")]
     ConfigCommand(ConfigCommand),
+    #[structopt(name = "commit")]
+    CommitCommand(CommitCommand),
 }
 
 #[tokio::main]
@@ -24,6 +29,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         CLI::ConfigCommand(config) => {
             config.run()?;
         }
+        CLI::CommitCommand(commit) => {
+            commit.run()?;
+        },
     }
 
     let config = get_config_data()?;
