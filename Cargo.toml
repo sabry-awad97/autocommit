@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 dirs = "5.0.0"
+futures = "0.3.28"
 regex = "1.8.1"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_yaml = "0.9.21"

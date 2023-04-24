@@ -10,8 +10,8 @@ enum Language {
     // Add more languages as needed
 }
 
-#[derive(Serialize, Deserialize)]
-struct Config {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Config {
     description: bool,
     emoji: bool,
     language: Language,
@@ -84,11 +84,16 @@ pub enum ConfigCommand {
 }
 
 impl ConfigCommand {
-    pub fn run(&self) -> Result<(), String> {
-        let mut config = match Config::from_file(&self.get_config_path()) {
+    fn get_config(&self) -> Result<Config, String> {
+        let config = match Config::from_file(&self.get_config_path()) {
             Ok(config) => config,
             Err(_) => Config::new(),
         };
+        Ok(config)
+    }
+
+    pub fn run(&self) -> Result<(), String> {
+        let mut config = self.get_config()?;
         match self {
             ConfigCommand::Get { keys, .. } => {
                 for key in keys {
@@ -159,4 +164,14 @@ impl ConfigCommand {
             path
         })
     }
+}
+
+pub fn get_config() -> Result<Config, String> {
+    let config_command = ConfigCommand::Get {
+        keys: vec![],
+        config_path: None,
+    };
+    let config = config_command.get_config()?;
+
+    Ok(config)
 }
