@@ -33,6 +33,57 @@ pub async fn git_add_all() -> anyhow::Result<()> {
     Ok(())
 }
 
+pub async fn git_add(files: &[String]) -> anyhow::Result<()> {
+    let mut command = Command::new("git");
+    command.arg("add").args(files);
+
+    let mut child = command.spawn()?;
+
+    let status = child.wait().await?;
+
+    if !status.success() {
+        return Err(anyhow!("Command 'git add' failed"));
+    }
+
+    Ok(())
+}
+
+pub async fn get_changed_files() -> anyhow::Result<Vec<String>> {
+    let modified = Command::new("git")
+        .arg("ls-files")
+        .arg("--modified")
+        .output()
+        .await
+        .map_err(|e| anyhow!("Command 'git ls-files --modified' failed: {}", e))?
+        .stdout;
+
+    let others = Command::new("git")
+        .arg("ls-files")
+        .arg("--others")
+        .arg("--exclude-standard")
+        .output()
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "Command 'git ls-files --others --exclude-standard' failed: {}",
+                e
+            )
+        })?
+        .stdout;
+
+    Ok(String::from_utf8(modified)?
+        .split('\n')
+        .chain(String::from_utf8(others)?.split('\n'))
+        .filter_map(|s| {
+            if s.is_empty() {
+                return None;
+            }
+
+            Some(String::from(s))
+        })
+        .collect())
+}
+
 pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
     let lock_files = files
         .iter()
