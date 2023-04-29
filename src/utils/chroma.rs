@@ -36,14 +36,14 @@ impl Chroma {
         }
     }
 
-    fn create_colors(&self) -> Chroma {
+    pub fn create_colors(&self) -> Self {
         let enabled = self.is_color_supported;
-        Chroma {
+        Self {
             is_color_supported: enabled,
         }
     }
 
-    fn reset(&self, s: &str) -> String {
+    pub fn reset(&self, s: &str) -> String {
         if self.is_color_supported {
             format!("\x1b[0m{}{}\x1b[0m", s, "\x1b[0m")
         } else {
@@ -51,27 +51,27 @@ impl Chroma {
         }
     }
 
-    fn bold(&self, s: &str) -> String {
+    pub fn bold(&self, s: &str) -> String {
         self.formatter("\x1b[1m", "\x1b[22m", Some("\x1b[22m\x1b[1m"))(s)
     }
 
-    fn dim(&self, s: &str) -> String {
+    pub fn dim(&self, s: &str) -> String {
         self.formatter("\x1b[2m", "\x1b[22m", Some("\x1b[22m\x1b[2m"))(s)
     }
 
-    fn italic(&self, s: &str) -> String {
+    pub fn italic(&self, s: &str) -> String {
         self.formatter("\x1b[3m", "\x1b[23m", None)(s)
     }
 
-    fn underline(&self, s: &str) -> String {
+    pub fn underline(&self, s: &str) -> String {
         self.formatter("\x1b[4m", "\x1b[24m", None)(s)
     }
 
-    fn inverse(&self, s: &str) -> String {
+    pub fn inverse(&self, s: &str) -> String {
         self.formatter("\x1b[7m", "\x1b[27m", None)(s)
     }
 
-    fn hidden(&self, s: &str) -> String {
+    pub fn hidden(&self, s: &str) -> String {
         self.formatter("\x1b[8m", "\x1b[28m", None)(s)
     }
 
@@ -83,31 +83,31 @@ impl Chroma {
         self.formatter("\x1b[30m", "\x1b[39m", None)(s)
     }
 
-    fn red(&self, s: &str) -> String {
+    pub fn red(&self, s: &str) -> String {
         self.formatter("\x1b[31m", "\x1b[39m", None)(s)
     }
 
-    fn green(&self, s: &str) -> String {
+    pub fn green(&self, s: &str) -> String {
         self.formatter("\x1b[32m", "\x1b[39m", None)(s)
     }
 
-    fn yellow(&self, s: &str) -> String {
+    pub fn yellow(&self, s: &str) -> String {
         self.formatter("\x1b[33m", "\x1b[39m", None)(s)
     }
 
-    fn blue(&self, s: &str) -> String {
+    pub fn blue(&self, s: &str) -> String {
         self.formatter("\x1b[34m", "\x1b[39m", None)(s)
     }
 
-    fn magenta(&self, s: &str) -> String {
+    pub fn magenta(&self, s: &str) -> String {
         self.formatter("\x1b[35m", "\x1b[39m", None)(s)
     }
 
-    fn cyan(&self, s: &str) -> String {
+    pub fn cyan(&self, s: &str) -> String {
         self.formatter("\x1b[36m", "\x1b[39m", None)(s)
     }
 
-    fn white(&self, s: &str) -> String {
+    pub fn white(&self, s: &str) -> String {
         self.formatter("\x1b[37m", "\x1b[39m", None)(s)
     }
 
@@ -115,35 +115,35 @@ impl Chroma {
         self.formatter("\x1b[90m", "\x1b[39m", None)(s)
     }
 
-    fn bg_black(&self, s: &str) -> String {
+    pub fn bg_black(&self, s: &str) -> String {
         self.formatter("\x1b[40m", "\x1b[49m", None)(s)
     }
 
-    fn bg_red(&self, s: &str) -> String {
+    pub fn bg_red(&self, s: &str) -> String {
         self.formatter("\x1b[41m", "\x1b[49m", None)(s)
     }
 
-    fn bg_green(&self, s: &str) -> String {
+    pub fn bg_green(&self, s: &str) -> String {
         self.formatter("\x1b[42m", "\x1b[49m", None)(s)
     }
 
-    fn bg_yellow(&self, s: &str) -> String {
+    pub fn bg_yellow(&self, s: &str) -> String {
         self.formatter("\x1b[43m", "\x1b[49m", None)(s)
     }
 
-    fn bg_blue(&self, s: &str) -> String {
+    pub fn bg_blue(&self, s: &str) -> String {
         self.formatter("\x1b[44m", "\x1b[49m", None)(s)
     }
 
-    fn bg_magenta(&self, s: &str) -> String {
+    pub fn bg_magenta(&self, s: &str) -> String {
         self.formatter("\x1b[45m", "\x1b[49m", None)(s)
     }
 
-    fn bg_cyan(&self, s: &str) -> String {
+    pub fn bg_cyan(&self, s: &str) -> String {
         self.formatter("\x1b[46m", "\x1b[49m", None)(s)
     }
 
-    fn bg_white(&self, s: &str) -> String {
+    pub fn bg_white(&self, s: &str) -> String {
         self.formatter("\x1b[47m", "\x1b[49m", None)(s)
     }
 }
