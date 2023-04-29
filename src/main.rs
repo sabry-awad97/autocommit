@@ -1,11 +1,10 @@
-use std::error::Error;
-
 use structopt::StructOpt;
 
 mod commands;
 mod utils;
 
 use commands::{get_config, Command};
+use utils::outro;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -23,18 +22,30 @@ struct CLI {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() {
     let cli = CLI::from_args();
 
     match cli.command {
-        Command::ConfigCommand(config) => {
-            config.run()?;
-        }
+        Command::ConfigCommand(config) => match config.run() {
+            Ok(_) => (),
+            Err(e) => {
+                outro(&e.to_string());
+            }
+        },
         Command::CommitCommand(commit) => {
-            let config = get_config()?;
-            commit.run(&config, cli.all).await?;
+            let config = match get_config() {
+                Ok(c) => c,
+                Err(e) => {
+                    outro(&e.to_string());
+                    return;
+                }
+            };
+            match commit.run(&config, cli.all).await {
+                Ok(_) => (),
+                Err(e) => {
+                    outro(&e.to_string());
+                }
+            }
         }
     }
-
-    Ok(())
 }

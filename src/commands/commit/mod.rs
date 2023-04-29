@@ -1,7 +1,10 @@
+use std::{any, thread, time::Duration};
+
 use crate::utils::{
-    assert_git_repo, generate_message, get_staged_diff, git_add_all, Message, MessageRole,
+    assert_git_repo, generate_message, get_changed_files, get_staged_diff, get_staged_files,
+    git_add, outro, Message, MessageRole,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use spinners::{Spinner, Spinners};
 use structopt::StructOpt;
 
@@ -22,11 +25,28 @@ impl CommitCommand {
         assert_git_repo().await?;
 
         if stage_all {
-            git_add_all().await?;
+            let changed_files = get_changed_files().await?;
+
+            if !changed_files.is_empty() {
+                git_add(&changed_files).await?;
+            } else {
+                return Err(anyhow!(
+                    "No changes detected, write some code and run again"
+                ));
+            }
+        }
+
+        let staged_files = get_staged_files().await?;
+        let changed_files = get_changed_files().await?;
+
+        if staged_files.is_empty() && changed_files.is_empty() {
+            return Err(anyhow!(
+                "No changes detected, write some code and run again"
+            ));
         }
 
         let staged_diff = get_staged_diff(&[]).await?;
-        let prompt = Message {
+        let _prompt = Message {
             role: MessageRole::User,
             content: get_prompt(config, &staged_diff),
         };
@@ -36,9 +56,10 @@ impl CommitCommand {
             "\tAI is Thinking about your changes...".into(),
         );
 
-        let mesage: String = generate_message(&[prompt]).await?;
+        // let mesage: String = generate_message(&[prompt]).await?;
+        thread::sleep(Duration::from_secs(2));
         sp.stop();
-        println!("{}", mesage);
+        // println!("{}", mesage);
         Ok(())
     }
 }
