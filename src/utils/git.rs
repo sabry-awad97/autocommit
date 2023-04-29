@@ -23,16 +23,6 @@ pub async fn assert_git_repo() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn git_add_all() -> anyhow::Result<()> {
-    let output = Command::new("git").arg("add").arg("--all").output().await?;
-
-    if !output.status.success() {
-        let error_message = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow!("Error: {}", error_message));
-    }
-    Ok(())
-}
-
 pub async fn git_add(files: &[String]) -> anyhow::Result<()> {
     let mut command = Command::new("git");
     command.arg("add").args(files);
@@ -46,6 +36,47 @@ pub async fn git_add(files: &[String]) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+pub async fn get_staged_files() -> anyhow::Result<Vec<String>> {
+    let top_level_dir = Command::new("git")
+        .arg("rev-parse")
+        .arg("--show-toplevel")
+        .output()
+        .await
+        .map_err(|e| anyhow!("Command 'git rev-parse --show-toplevel' failed: {}", e))?
+        .stdout;
+
+    let top_level_dir_str = String::from_utf8_lossy(&top_level_dir);
+
+    let output = Command::new("git")
+        .arg("diff")
+        .arg("--name-only")
+        .arg("--cached")
+        .arg("--relative")
+        .arg(top_level_dir_str.trim_end())
+        .output()
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "Command 'git diff --name-only --cached --relative {}' failed: {}",
+                top_level_dir_str.trim_end(),
+                e
+            )
+        })?;
+
+    let output_str = String::from_utf8(output.stdout)?;
+    let files = output_str.split('\n').filter(|s| !s.is_empty());
+
+    // let ig = get_ignore_patterns().await?;
+
+    Ok(files
+        .filter(|_file| {
+            // ig.matched(file, false).is_none()
+            true
+        })
+        .map(|v| v.to_owned())
+        .collect())
 }
 
 pub async fn get_changed_files() -> anyhow::Result<Vec<String>> {
