@@ -4,7 +4,7 @@ mod commands;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::outro;
+use utils::{outro, Colors};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -43,7 +43,7 @@ async fn main() {
             match commit.run(&config, cli.all).await {
                 Ok(_) => (),
                 Err(e) => {
-                    outro(&e.to_string());
+                    outro(&Colors.red(&e.to_string()));
                 }
             }
         }
