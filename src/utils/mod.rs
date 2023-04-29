@@ -10,4 +10,4 @@ pub use git::{assert_git_repo, get_changed_files, get_staged_diff, get_staged_fi
 pub use is_unicode_supported::get_unicode_string;
 pub use openai::{generate_message, Message, MessageRole};
 pub use prompts::{intro, outro};
-pub use spinner::Spinner;
+pub use spinner::spinner;

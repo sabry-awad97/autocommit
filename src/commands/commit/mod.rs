@@ -1,11 +1,11 @@
-use std::{any, thread, time::Duration};
+use std::{thread, time::Duration};
 
 use crate::utils::{
     assert_git_repo, generate_message, get_changed_files, get_staged_diff, get_staged_files,
-    git_add, outro, Message, MessageRole,
+    git_add, spinner, Message, MessageRole,
 };
+
 use anyhow::{anyhow, Result};
-use spinners::{Spinner, Spinners};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -45,20 +45,27 @@ impl CommitCommand {
             ));
         }
 
+        let mut staged_spinner = spinner("Counting staged files");
+        staged_spinner
+            .start()
+            .map_err(|_| anyhow!("Error starting spinner"))?;
+
+        if staged_files.is_empty() {
+            staged_spinner
+                .stop()
+                .map_err(|_| anyhow!("Error stopping spinner"))?;
+        }
+
         let staged_diff = get_staged_diff(&[]).await?;
         let _prompt = Message {
             role: MessageRole::User,
             content: get_prompt(config, &staged_diff),
         };
 
-        let mut sp = Spinner::new(
-            Spinners::CircleHalves,
-            "\tAI is Thinking about your changes...".into(),
-        );
-
         // let mesage: String = generate_message(&[prompt]).await?;
         thread::sleep(Duration::from_secs(2));
-        sp.stop();
+        // staged_spinner.stop();
+        println!("\nDone!");
         // println!("{}", mesage);
         Ok(())
     }
