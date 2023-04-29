@@ -4,7 +4,7 @@ mod commands;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::{outro, Colors};
+use utils::{intro, outro, Colors};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -23,6 +23,8 @@ struct CLI {
 
 #[tokio::main]
 async fn main() {
+    intro("Autocommit");
+
     let cli = CLI::from_args();
 
     match cli.command {
@@ -43,7 +45,8 @@ async fn main() {
             match commit.run(&config, cli.all).await {
                 Ok(_) => (),
                 Err(e) => {
-                    outro(&Colors.red(&e.to_string()));
+                    let err = format!("✖ {}", e);
+                    outro(&Colors.red(&err));
                 }
             }
         }
