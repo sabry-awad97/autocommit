@@ -6,6 +6,7 @@ pub struct Chroma {
     is_color_supported: bool,
 }
 
+#[allow(dead_code)]
 impl Chroma {
     fn new() -> Self {
         let is_color_supported = match env::var("NO_COLOR") {
