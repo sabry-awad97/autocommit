@@ -129,10 +129,10 @@ impl CommitCommand {
         commit_spinner.stop("📝 Commit message generated successfully");
 
         outro(&format!(
-            "Commit message:
-            ——————————————————
-            {}
-            ——————————————————",
+            "Commit message:\n\
+             ——————————————————\n\
+             {}\n\
+             ——————————————————",
             commit_message
         ));
 
@@ -146,7 +146,7 @@ impl CommitCommand {
                 .with_prompt("Do you want to push these changes to the remote repository?")
                 .interact_opt()?;
 
-            if push_confirmed_by_user.is_some() {
+            if let Some(true) = push_confirmed_by_user {
                 self.push_changes().await?;
             }
         }
