@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use crate::utils::{generate_message, spinner, Message, MessageRole};
+use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
 
 use crate::git::GitRepository;
 
@@ -21,24 +21,21 @@ fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
 }
 
 impl CommitCommand {
-
     async fn stage_all_files(&self) -> Result<()> {
         let changed_files = GitRepository::get_changed_files().await?;
-    
+
         if !changed_files.is_empty() {
             GitRepository::git_add(&changed_files).await?;
         } else {
-            return Err(anyhow!("No changes detected, write some code and run again"));
+            return Err(anyhow!(
+                "No changes detected, write some code and run again"
+            ));
         }
-    
+
         Ok(())
     }
 
-    pub async fn run(
-        &self,
-        config: &AutocommitConfig,
-        mut is_stage_all_flag: bool,
-    ) -> Result<String> {
+    pub async fn run(&self, config: &AutocommitConfig, mut is_stage_all_flag: bool) -> Result<()> {
         GitRepository::assert_git_repo().await?;
 
         loop {
@@ -57,7 +54,7 @@ impl CommitCommand {
 
             let mut staged_spinner = spinner();
             staged_spinner.start("Counting staged files");
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(500));
             if staged_files.is_empty() {
                 staged_spinner.stop("No files are staged");
 
@@ -112,9 +109,20 @@ impl CommitCommand {
 
                 let commit_message = self
                     .generate_commit_message_from_git_diff(config, &staged_diff)
-                    .await;
+                    .await?;
 
-                return commit_message;
+                outro(&format!(
+                    "Commit message:\n\
+                     ——————————————————\n\
+                     {}\n\
+                     ——————————————————",
+                    commit_message
+                ));
+
+                let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt(format!("\n\nDo you want to commit these changes?"))
+                    .interact()?;
+                return Ok(());
             }
         }
     }

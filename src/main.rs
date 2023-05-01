@@ -45,15 +45,7 @@ async fn main() {
                 }
             };
             match commit.run(&config, cli.all).await {
-                Ok(commit_message) => {
-                    outro(&format!(
-                        "Commit message:\n\
-                         ——————————————————\n\
-                         {}\n\
-                         ——————————————————",
-                        commit_message
-                    ));
-                }
+                Ok(_) => (),
                 Err(e) => {
                     let err = format!("✖ {}", e);
                     outro(&get_colors().red(&err));
