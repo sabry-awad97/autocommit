@@ -58,12 +58,17 @@ impl ChatContext {
         let lang = format!("Use {} to answer.", translation.language);
         system_message.push(&lang);
         system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
-        
-        
+
         system_message.push("Include a 'Signed-off-by' line indicating the author of the commit.");
-        
-        let name = format!("The name of the author is {}", config.config_data.name);
-        let email = format!("The email of the author is {}", config.config_data.email);
+
+        let name = format!(
+            "The [author-name] of the author is {}",
+            config.config_data.name
+        );
+        let email = format!(
+            "The [author-email] of the author is {}",
+            config.config_data.email
+        );
         system_message.push(&name);
         system_message.push(&email);
 

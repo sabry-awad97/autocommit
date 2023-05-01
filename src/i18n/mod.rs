@@ -38,7 +38,9 @@ pub fn load_i18n() -> I18n {
             To improve the error handling logic of the API request, a `match` expression was added to handle the case when the API request fails.
             Updates:
             - The `serde_json::from_str` function now uses `trim()` function to remove leading/trailing spaces before data parsing. 
-            - A `match` expression now handles the `Err` case when making the API request.")),
+            - A `match` expression now handles the `Err` case when making the API request.
+            Co-authored-by: [author-name] <[author-email]>
+            ")),
             language: "English".to_string(),
         },
     );
