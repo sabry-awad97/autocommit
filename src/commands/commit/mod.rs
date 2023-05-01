@@ -51,10 +51,7 @@ impl CommitCommand {
 
                 let is_stage_all_and_commit_confirmed_by_user =
                     Confirm::with_theme(&ColorfulTheme::default())
-                        .with_prompt(format!(
-                            "{}",
-                            "Do you want to stage all files and generate commit message?"
-                        ))
+                        .with_prompt("Do you want to stage all files and generate commit message?")
                         .default(true)
                         .interact_opt()?;
 
