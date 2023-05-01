@@ -33,21 +33,21 @@ async fn main() {
         Command::ConfigCommand(config) => match config.run() {
             Ok(_) => (),
             Err(e) => {
-                outro(&format!("✖ {}", e).red());
+                outro(&format!("{} {}", "✖".red(), e));
             }
         },
         Command::CommitCommand(commit) => {
             let config = match get_config() {
                 Ok(c) => c,
                 Err(e) => {
-                    outro(&format!("✖ {}", e).red());
+                    outro(&format!("{} {}", "✖".red(), e));
                     return;
                 }
             };
             match commit.run(&config, cli.all).await {
                 Ok(_) => (),
                 Err(e) => {
-                    outro(&format!("✖ {}", e).red());
+                    outro(&format!("{} {}", "✖".red(), e));
                 }
             }
         }
