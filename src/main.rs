@@ -18,11 +18,6 @@ use utils::{intro, outro};
 struct CLI {
     #[structopt(subcommand)]
     command: Command,
-
-    #[structopt(short, long)]
-    all: bool,
-    #[structopt(short, long)]
-    branch_name: Option<String>,
 }
 
 #[tokio::main]
@@ -38,7 +33,7 @@ async fn main() {
                 outro(&format!("{} {}", "✖".red(), e));
             }
         },
-        Command::CommitCommand(commit) => {
+        Command::CommitCommand(mut commit) => {
             let config = match get_config() {
                 Ok(c) => c,
                 Err(e) => {
@@ -54,7 +49,8 @@ async fn main() {
                     return;
                 }
             };
-            match commit.run(&config, cli.all, cli.branch_name).await {
+
+            match commit.run(&config).await {
                 Ok(_) => (),
                 Err(e) => {
                     let message = &format!("{} {}", "✖".red(), e);

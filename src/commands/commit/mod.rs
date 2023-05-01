@@ -15,7 +15,12 @@ use super::config::AutocommitConfig;
 mod chat_context;
 
 #[derive(Debug, StructOpt)]
-pub struct CommitCommand {}
+pub struct CommitCommand {
+    #[structopt(name = "all", short, long)]
+    is_stage_all_flag: bool,
+    #[structopt(short, long)]
+    branch_name: Option<String>,
+}
 
 impl CommitCommand {
     pub async fn stage_all_changed_files() -> anyhow::Result<()> {
@@ -32,17 +37,11 @@ impl CommitCommand {
         Ok(())
     }
 
-    pub async fn run(
-        &self,
-        config: &AutocommitConfig,
-        mut is_stage_all_flag: bool,
-        branch_name: Option<String>,
-    ) -> anyhow::Result<()> {
+    pub async fn run(&mut self, config: &AutocommitConfig) -> anyhow::Result<()> {
         info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
-
         loop {
-            if is_stage_all_flag {
+            if self.is_stage_all_flag {
                 Self::stage_all_changed_files().await?;
             }
 
@@ -67,12 +66,12 @@ impl CommitCommand {
                         .interact_opt()?;
 
                 if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
-                    is_stage_all_flag = true;
+                    self.is_stage_all_flag = true;
                     continue;
                 } else if changed_files.len() > 0 {
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
                     GitRepository::git_add(&files).await?;
-                    is_stage_all_flag = false;
+                    self.is_stage_all_flag = false;
                     continue;
                 } else {
                     outro(&format!(
@@ -99,11 +98,11 @@ impl CommitCommand {
                 if let Ok(Some(new_message)) =
                     Self::prompt_to_commit_changes(config, &staged_diff, &commit_message).await
                 {
-                    Self::commit_changes(&new_message, branch_name.clone()).await?;
+                    Self::commit_changes(&new_message, self.branch_name.clone()).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
                         if let Ok(true) = Self::prompt_for_push(&remote) {
                             Self::pull_changes(&remote).await?;
-                            Self::push_changes(&new_message, &remote, branch_name.clone()).await?;
+                            Self::push_changes(&new_message, &remote, self.branch_name.clone()).await?;
                             info!("Autocommit process completed successfully");
                         }
                     }
@@ -115,7 +114,7 @@ impl CommitCommand {
                     return Ok(());
                 }
 
-                is_stage_all_flag = false;
+                self.is_stage_all_flag = false;
             }
         }
     }
@@ -183,7 +182,8 @@ impl CommitCommand {
                     .default(false)
                     .interact()?;
             if is_generate_new_message_confirmed_by_user {
-                let mut new_content = String::from("Suggest a professional git commit message with gitmoji\n");
+                let mut new_content =
+                    String::from("Suggest a professional git commit message with gitmoji\n");
                 new_content.push_str(&staged_diff);
                 message = Self::generate_autocommit_message(config, &new_content).await?;
             } else {
