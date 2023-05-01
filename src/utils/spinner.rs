@@ -8,11 +8,12 @@ use std::{
     time::Duration,
 };
 
+use colored::{Color, Colorize};
 use regex::Regex;
 
 use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError, TrySendError};
 
-use crate::utils::{get_unicode_string, get_colors};
+use crate::utils::get_unicode_string;
 
 #[derive(Debug, Clone)]
 pub enum SpinnerMessage {
@@ -94,13 +95,17 @@ impl SpinnerState {
     }
 
     pub fn spin(&mut self, running: Arc<AtomicBool>, paused: Arc<(Mutex<bool>, Condvar)>) {
-        let colors = get_colors();
         let output = io::stdout();
         let mut handle = output.lock();
         write!(handle, "\x1B[?25l").unwrap(); // hide cursor
 
-        let s_bar = get_unicode_string("│", "|");
-        println!("{}", colors.gray(s_bar));
+        let s_bar = get_unicode_string("│", "|").color(Color::TrueColor {
+            r: 128,
+            g: 128,
+            b: 128,
+        });
+
+        println!("{}", s_bar);
         loop {
             if !running.load(Ordering::SeqCst) {
                 break;
@@ -119,9 +124,9 @@ impl SpinnerState {
 
             let output_str = format!(
                 "{} {}{}",
-                colors.magenta(&frame),
+                &frame.magenta(),
                 self.trimmed_message,
-                colors.magenta(&dots)
+                &dots.magenta()
             );
             write!(handle, "\r{}\x1B[K", &output_str).unwrap();
             self.current_index = match self.reverse.load(Ordering::SeqCst) {
@@ -196,12 +201,20 @@ impl Spinner {
     pub fn stop(&mut self, message: impl Into<String>) {
         self.state.channel.try_send(SpinnerMessage::Stop).unwrap();
         self.running.store(false, Ordering::SeqCst);
-        let s_bar = get_unicode_string("│", "|");
-        let s_step_submit = get_unicode_string("◇", "o");
-        let colors = get_colors();
+        let s_bar = get_unicode_string("│", "|").color(Color::TrueColor {
+            r: 128,
+            g: 128,
+            b: 128,
+        });
         
-        println!("\n{}", colors.gray(s_bar));
-        println!("{} {}", colors.green(s_step_submit), message.into());
+        let s_step_submit = get_unicode_string("◇", "o").color(Color::TrueColor {
+            r: 128,
+            g: 128,
+            b: 128,
+        });
+
+        println!("\n{}", s_bar);
+        println!("{} {}", s_step_submit, message.into());
     }
 
     pub fn set_message<T>(&mut self, message: T)

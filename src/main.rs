@@ -1,3 +1,4 @@
+use colored::Colorize;
 use structopt::StructOpt;
 
 mod commands;
@@ -6,7 +7,7 @@ mod i18n;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::{get_colors, intro, outro};
+use utils::{intro, outro};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -48,8 +49,7 @@ async fn main() {
             match commit.run(&config, cli.all).await {
                 Ok(_) => (),
                 Err(e) => {
-                    let err = format!("✖ {}", e);
-                    outro(&get_colors().red(&err));
+                    outro(&format!("✖ {}", e).red());
                 }
             }
         }
