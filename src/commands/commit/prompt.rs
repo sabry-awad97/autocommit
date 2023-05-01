@@ -1,8 +1,10 @@
 use colored::Colorize;
-use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
+use dialoguer::{theme::ColorfulTheme, Confirm, Editor, MultiSelect};
 
-use crate::{git::GitRepository, utils::outro};
+use crate::{commands::config::AutocommitConfig, git::GitRepository, utils::outro};
 use anyhow::anyhow;
+
+use super::generate;
 
 pub async fn prompt_to_continue() -> anyhow::Result<bool> {
     let should_continue = Confirm::with_theme(&ColorfulTheme::default())
@@ -11,16 +13,55 @@ pub async fn prompt_to_continue() -> anyhow::Result<bool> {
     Ok(should_continue)
 }
 
-pub fn prompt_to_commit_changes() -> anyhow::Result<bool> {
+pub async fn prompt_to_commit_changes(
+    config: &AutocommitConfig,
+    staged_diff: &str,
+    commit_message: &str,
+) -> anyhow::Result<Option<String>> {
+    let mut message = commit_message.to_string();
+
+    loop {
+        let edit_message = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Do you want to edit the commit message?")
+            .interact()?;
+
+        if !edit_message {
+            break;
+        }
+
+        let editor = Editor::new();
+
+        if let Some(new_message) = editor.edit(&message)? {
+            message = new_message.trim().to_string();
+            break;
+        }
+
+        let is_generate_new_message_confirmed_by_user =
+            Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!(
+                    "{}",
+                    "Do you want to generate a new commit message?"
+                ))
+                .interact()?;
+        if is_generate_new_message_confirmed_by_user {
+            // let new_content = prompt::prompt_for_new_message().await?;
+            let mut new_content = String::from("Suggest new git commit message\n");
+            new_content.push_str(&staged_diff);
+            message = generate::generate_autocommit_message(config, &new_content).await?;
+        } else {
+            break;
+        }
+    }
+    
     let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(format!("Do you want to commit these changes?"))
         .interact_opt()?;
 
     if let Some(true) = preview_confirmed_by_user {
-        Ok(true)
+        Ok(Some(message))
     } else {
         outro("Commit cancelled, exiting...");
-        Ok(false)
+        Ok(None)
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
 };
 
 use colored::Colorize;
-use dialoguer::{theme::ColorfulTheme, Confirm, Editor};
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -82,48 +82,16 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                let mut commit_message =
+                let commit_message =
                     generate::generate_autocommit_message(config, &staged_diff).await?;
 
-                loop {
-                    let edit_message = Confirm::with_theme(&ColorfulTheme::default())
-                        .with_prompt("Do you want to edit the commit message?")
-                        .interact()?;
-
-                    if !edit_message {
-                        break;
-                    }
-
-                    let editor = Editor::new();
-
-                    if let Some(new_message) = editor.edit(&commit_message)? {
-                        commit_message = new_message.trim().to_string();
-                        break;
-                    }
-
-                    let is_generate_new_message_confirmed_by_user =
-                        Confirm::with_theme(&ColorfulTheme::default())
-                            .with_prompt(format!(
-                                "{}",
-                                "Do you want to generate a new commit message?"
-                            ))
-                            .interact()?;
-                    if is_generate_new_message_confirmed_by_user {
-                        // let new_content = prompt::prompt_for_new_message().await?;
-                        let mut new_content = String::from("Suggest new git commit message\n");
-                        new_content.push_str(&staged_diff);
-                        commit_message =
-                            generate::generate_autocommit_message(config, &new_content).await?;
-                    } else {
-                        break;
-                    }
-                }
-
-                if let Ok(true) = prompt::prompt_to_commit_changes() {
-                    generate::commit_changes(&commit_message).await?;
+                if let Ok(Some(new_message)) =
+                    prompt::prompt_to_commit_changes(config, &staged_diff, &commit_message).await
+                {
+                    generate::commit_changes(&new_message).await?;
                     if let Some(remote) = prompt::prompt_for_remote().await? {
                         if let Ok(true) = prompt::prompt_for_push(&remote) {
-                            push::push_changes(&commit_message, &remote).await?;
+                            push::push_changes(&new_message, &remote).await?;
                         }
                     }
                 }
