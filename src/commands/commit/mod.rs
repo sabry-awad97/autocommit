@@ -5,8 +5,7 @@ use crate::{
     utils::{outro, spinner},
 };
 
-use anyhow::{anyhow, Result};
-use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -20,32 +19,11 @@ mod stage;
 pub struct CommitCommand {}
 
 impl CommitCommand {
-    async fn prompt_for_selected_files(&self, changed_files: &[String]) -> Result<Vec<String>> {
-        let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!(
-                "Select the files you want to add to the commit ({} files changed):",
-                changed_files.len()
-            ))
-            .items(&changed_files)
-            .interact_opt()?;
-
-        if let Some(items) = selected_items {
-            if items.is_empty() {
-                return Err(anyhow!("Please select at least one option with space"));
-            }
-
-            let files = items
-                .iter()
-                .map(|&i| changed_files[i].to_string())
-                .collect::<Vec<_>>();
-
-            Ok(files)
-        } else {
-            return Err(anyhow!("No files selected for staging"));
-        }
-    }
-
-    pub async fn run(&self, config: &AutocommitConfig, mut is_stage_all_flag: bool) -> Result<()> {
+    pub async fn run(
+        &self,
+        config: &AutocommitConfig,
+        mut is_stage_all_flag: bool,
+    ) -> anyhow::Result<()> {
         GitRepository::assert_git_repo().await?;
 
         loop {
@@ -79,7 +57,7 @@ impl CommitCommand {
                     is_stage_all_flag = true;
                     continue;
                 } else if changed_files.len() > 0 {
-                    let files = self.prompt_for_selected_files(&changed_files).await?;
+                    let files = prompt::prompt_for_selected_files(&changed_files).await?;
                     GitRepository::git_add(&files).await?;
                     is_stage_all_flag = false;
                     continue;
@@ -99,7 +77,22 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                return generate::generate_autocommit_message(config, &staged_diff).await;
+                let commit_message =
+                    generate::generate_autocommit_message(config, &staged_diff).await?;
+
+                if let Some(remote) = prompt::prompt_for_remote().await? {
+                    if let Ok(true) = prompt::prompt_for_push(&remote) {
+                        push::push_changes(&commit_message, &remote).await?;
+                    }
+                }
+
+                let should_continue = prompt::prompt_to_continue().await?;
+                if !should_continue {
+                    outro("Exiting...");
+                    return Ok(());
+                }
+
+                is_stage_all_flag = false;
             }
         }
     }
