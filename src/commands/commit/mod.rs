@@ -7,6 +7,7 @@ use crate::{
 
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm};
+use log::info;
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -26,6 +27,7 @@ impl CommitCommand {
         config: &AutocommitConfig,
         mut is_stage_all_flag: bool,
     ) -> anyhow::Result<()> {
+        info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
 
         loop {
@@ -92,6 +94,7 @@ impl CommitCommand {
                     if let Some(remote) = prompt::prompt_for_remote().await? {
                         if let Ok(true) = prompt::prompt_for_push(&remote) {
                             push::push_changes(&new_message, &remote).await?;
+                            info!("Autocommit process completed successfully");
                         }
                     }
                 }
