@@ -1,5 +1,4 @@
 mod chroma;
-mod git;
 mod is_unicode_supported;
 mod openai;
 mod prompts;
