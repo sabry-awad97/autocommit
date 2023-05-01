@@ -45,7 +45,7 @@ pub async fn prompt_to_commit_changes(
                 .interact()?;
         if is_generate_new_message_confirmed_by_user {
             // let new_content = prompt::prompt_for_new_message().await?;
-            let mut new_content = String::from("Suggest new git commit message\n");
+            let mut new_content = String::from("Suggest a professional git commit message\n");
             new_content.push_str(&staged_diff);
             message = generate::generate_autocommit_message(config, &new_content).await?;
         } else {
