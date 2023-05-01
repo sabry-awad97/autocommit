@@ -2,6 +2,7 @@ use structopt::StructOpt;
 
 mod commands;
 mod git;
+mod i18n;
 mod utils;
 
 use commands::{get_config, Command};

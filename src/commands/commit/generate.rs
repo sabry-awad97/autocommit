@@ -3,14 +3,9 @@ use dialoguer::Confirm;
 
 use crate::commands::config::AutocommitConfig;
 use crate::git::GitRepository;
-use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
+use crate::utils::{outro, spinner, MessageRole};
 
-fn get_chat_context(config: &AutocommitConfig, diff: &str) -> String {
-    let language = format!("{:?}", config.config_data.language).to_lowercase();
-    format!("Write a git commit message in present tense for the following diff without prefacing it with anything. \
-    Do not be needlessly verbose and make sure the answer is concise and to the point. \
-    The response must be in the language {}: \n{}", language, diff)
-}
+use super::chat_context::ChatContext;
 
 pub async fn generate_autocommit_message(
     config: &AutocommitConfig,
@@ -19,12 +14,10 @@ pub async fn generate_autocommit_message(
     let mut commit_spinner = spinner();
     commit_spinner.start("Generating the commit message");
 
-    let prompt = Message {
-        role: MessageRole::User,
-        content: get_chat_context(config, &staged_diff),
-    };
+    let mut chat_context = ChatContext::get_initial_context(config);
+    chat_context.add_message(MessageRole::User, staged_diff.to_owned());
 
-    let commit_message = generate_message(&[prompt]).await?;
+    let commit_message = chat_context.generate_message().await?;
     commit_spinner.stop("📝 Commit message generated successfully");
 
     outro(&format!(

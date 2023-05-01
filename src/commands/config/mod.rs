@@ -6,11 +6,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum Language {
-    English,
-    // Add more languages as needed
-}
+use crate::i18n::language::Language;
 
 // This enum represents the configuration keys
 #[derive(Debug, PartialEq)]

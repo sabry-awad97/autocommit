@@ -10,6 +10,7 @@ use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
 
+mod chat_context;
 mod generate;
 mod prompt;
 mod push;

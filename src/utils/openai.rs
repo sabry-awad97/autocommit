@@ -59,6 +59,12 @@ pub struct Message {
     pub content: String,
 }
 
+impl Message {
+    pub fn new(role: MessageRole, content: String) -> Self {
+        Self { role, content }
+    }
+}
+
 #[derive(Deserialize, Clone)]
 pub struct ChatCompletionChoice {
     pub index: u64,
