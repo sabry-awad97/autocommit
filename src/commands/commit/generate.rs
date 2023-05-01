@@ -22,12 +22,7 @@ pub async fn generate_autocommit_message(
     let commit_message = chat_context.generate_message().await?;
     commit_spinner.stop("📝 Commit message generated successfully");
 
-    let separator_length = commit_message
-        .lines()
-        .map(|line| line.len())
-        .max()
-        .unwrap_or(20);
-
+    let separator_length = 40;
     let separator = "—"
         .repeat(separator_length)
         .color(Color::TrueColor {

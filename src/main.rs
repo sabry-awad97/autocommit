@@ -41,8 +41,7 @@ async fn main() {
                 Ok(c) => c,
                 Err(e) => {
                     let message = &format!("{} {}", "✖".red(), e);
-                    let separator_length =
-                        message.lines().map(|line| line.len()).max().unwrap_or(20);
+                    let separator_length = 80;
                     let separator = "—".repeat(separator_length).red().bold();
                     outro(&format!(
                         "Commit message:\n{}\n{}\n{}",
@@ -57,14 +56,11 @@ async fn main() {
                 Ok(_) => (),
                 Err(e) => {
                     let message = &format!("{} {}", "✖".red(), e);
-                    let separator_length =
-                        message.lines().map(|line| line.len()).max().unwrap_or(20);
+                    let separator_length = 80;
                     let separator = "—".repeat(separator_length).red().bold();
                     outro(&format!(
                         "Commit message:\n{}\n{}\n{}",
-                        separator,
-                        message,
-                        separator
+                        separator, message, separator
                     ));
                 }
             }
