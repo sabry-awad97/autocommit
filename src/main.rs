@@ -40,14 +40,32 @@ async fn main() {
             let config = match get_config() {
                 Ok(c) => c,
                 Err(e) => {
-                    outro(&format!("{} {}", "✖".red(), e));
+                    let message = &format!("{} {}", "✖".red(), e);
+                    let separator_length =
+                        message.lines().map(|line| line.len()).max().unwrap_or(20);
+                    let separator = "—".repeat(separator_length).red().bold();
+                    outro(&format!(
+                        "Commit message:\n{}\n{}\n{}",
+                        separator,
+                        message.red(),
+                        separator
+                    ));
                     return;
                 }
             };
             match commit.run(&config, cli.all).await {
                 Ok(_) => (),
                 Err(e) => {
-                    outro(&format!("{} {}", "✖".red(), e));
+                    let message = &format!("{} {}", "✖".red(), e);
+                    let separator_length =
+                        message.lines().map(|line| line.len()).max().unwrap_or(20);
+                    let separator = "—".repeat(separator_length).red().bold();
+                    outro(&format!(
+                        "Commit message:\n{}\n{}\n{}",
+                        separator,
+                        message,
+                        separator
+                    ));
                 }
             }
         }
