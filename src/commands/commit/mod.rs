@@ -2,7 +2,6 @@ use std::{thread, time::Duration};
 
 use crate::git::GitRepository;
 use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
-use indicatif::ProgressBar;
 
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
@@ -13,7 +12,7 @@ use super::config::AutocommitConfig;
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
 
-fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
+fn get_chat_context(config: &AutocommitConfig, diff: &str) -> String {
     let language = format!("{:?}", config.config_data.language).to_lowercase();
     format!("Write a git commit message in present tense for the following diff without prefacing it with anything. \
     Do not be needlessly verbose and make sure the answer is concise and to the point. \
@@ -106,32 +105,9 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-
-                let commit_message = self
+                return self
                     .generate_commit_message_from_git_diff(config, &staged_diff)
-                    .await?;
-
-                outro(&format!(
-                    "Commit message:\n\
-                     ——————————————————\n\
-                     {}\n\
-                     ——————————————————",
-                    commit_message
-                ));
-
-                let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt(format!("Do you want to commit these changes?"))
-                    .interact_opt()?;
-
-                if preview_confirmed_by_user.is_some() {
-                    let progress_bar = ProgressBar::new_spinner();
-                    progress_bar.set_message("Committing changes...");
-                    progress_bar.enable_steady_tick(Duration::from_millis(100));
-                    thread::sleep(Duration::from_secs(2));
-                    progress_bar.finish_with_message("Changes committed successfully");
-                    // GitRepository::git_commit(&commit_message).await?;
-                }
-                return Ok(());
+                    .await;
             }
         }
     }
@@ -140,12 +116,37 @@ impl CommitCommand {
         &self,
         config: &AutocommitConfig,
         staged_diff: &str,
-    ) -> Result<String> {
+    ) -> Result<()> {
+        let mut commit_spinner = spinner();
+        commit_spinner.start("Generating the commit message");
+
         let prompt = Message {
             role: MessageRole::User,
-            content: get_prompt(config, &staged_diff),
+            content: get_chat_context(config, &staged_diff),
         };
 
-        generate_message(&[prompt]).await
+        let commit_message = generate_message(&[prompt]).await?;
+        commit_spinner.stop("📝 Commit message generated successfully");
+
+        outro(&format!(
+            "Commit message:
+            ——————————————————
+            {}
+            ——————————————————",
+            commit_message
+        ));
+
+        let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!("Do you want to commit these changes?"))
+            .interact_opt()?;
+
+        if preview_confirmed_by_user.is_some() {
+            let mut commit_spinner = spinner();
+            commit_spinner.start("Committing changes...");
+            GitRepository::git_commit(&commit_message).await?;
+            commit_spinner.stop("Changes committed successfully");
+        }
+
+        Ok(())
     }
 }
