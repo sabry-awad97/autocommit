@@ -1,11 +1,8 @@
 use colored::Colorize;
 
-use crate::{
-    git::GitRepository,
-    utils::{outro, spinner},
-};
+use crate::{git::GitRepository, utils::spinner};
 
-pub async fn push_changes(commit_message: &str, remote: &str) -> anyhow::Result<()> {
+pub async fn push_changes(_commit_message: &str, remote: &str) -> anyhow::Result<()> {
     let mut push_spinner = spinner();
     push_spinner.start(format!(
         "Pushing changes to remote repository {}...",
@@ -13,17 +10,9 @@ pub async fn push_changes(commit_message: &str, remote: &str) -> anyhow::Result<
     ));
     GitRepository::git_push(&remote).await?;
     push_spinner.stop(format!(
-        "{} Changes pushed to remote repository {}",
+        "{} Changes pushed successfully to remote repository {}.",
         "✔".green(),
         remote.green()
     ));
-    outro(&format!(
-        "Changes committed and pushed to remote repository {} with message:\n\
-        ——————————————————\n\
-        {}\n\
-        ——————————————————",
-        remote.green(), commit_message
-    ));
-
     Ok(())
 }

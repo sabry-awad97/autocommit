@@ -91,10 +91,9 @@ impl CommitCommand {
                         .interact()?;
 
                     if !edit_message {
-                        outro(&format!("{}", "Exiting...".red()));
                         break;
                     }
-                    
+
 
                     let editor = Editor::new();
 
