@@ -5,7 +5,8 @@ use crate::{
     utils::{outro, spinner},
 };
 
-use dialoguer::{theme::ColorfulTheme, Confirm};
+use colored::Colorize;
+use dialoguer::{theme::ColorfulTheme, Confirm, Editor};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -63,7 +64,10 @@ impl CommitCommand {
                     is_stage_all_flag = false;
                     continue;
                 } else {
-                    outro("No files selected for staging, exiting...");
+                    outro(&format!(
+                        "{}",
+                        "No files selected for staging, exiting...".red()
+                    ));
                     return Ok(());
                 }
             } else {
@@ -78,9 +82,47 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                if let Some(commit_message) =
-                    generate::generate_autocommit_message(config, &staged_diff).await?
-                {
+                let mut commit_message =
+                    generate::generate_autocommit_message(config, &staged_diff).await?;
+
+                loop {
+                    let edit_message = Confirm::with_theme(&ColorfulTheme::default())
+                        .with_prompt("Do you want to edit the commit message?")
+                        .interact()?;
+
+                    if !edit_message {
+                        outro(&format!("{}", "Exiting...".red()));
+                        break;
+                    }
+
+                    let editor = Editor::new();
+
+                    if let Some(new_message) = editor.edit(&commit_message)? {
+                        commit_message = new_message.trim().to_string();
+                        break;
+                    }
+
+                    let is_generate_new_message_confirmed_by_user =
+                        Confirm::with_theme(&ColorfulTheme::default())
+                            .with_prompt(format!(
+                                "{}",
+                                "Do you want to generate a new commit message?"
+                            ))
+                            .interact()?;
+                    if is_generate_new_message_confirmed_by_user {
+                        // let new_content = prompt::prompt_for_new_message().await?;
+                        let mut new_content = String::from("Suggest new commit message");
+                        new_content.push_str(&staged_diff);
+                        commit_message =
+                            generate::generate_autocommit_message(config, &new_content).await?;
+                    } else {
+                        outro(&format!("{}", "Exiting...".red()));
+                        return Ok(());
+                    }
+                }
+
+                if let Ok(true) = prompt::prompt_to_commit_changes() {
+                    generate::commit_changes(&commit_message).await?;
                     if let Some(remote) = prompt::prompt_for_remote().await? {
                         if let Ok(true) = prompt::prompt_for_push(&remote) {
                             push::push_changes(&commit_message, &remote).await?;
@@ -90,7 +132,7 @@ impl CommitCommand {
 
                 let should_continue = prompt::prompt_to_continue().await?;
                 if !should_continue {
-                    outro("Exiting...");
+                    outro(&format!("{}", "Exiting...".red()));
                     return Ok(());
                 }
 
