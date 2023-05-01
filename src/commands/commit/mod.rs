@@ -154,10 +154,7 @@ impl CommitCommand {
         loop {
             let is_generate_new_message_confirmed_by_user =
                 Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt(format!(
-                        "{}",
-                        "Do you want to generate a new commit message?"
-                    ))
+                    .with_prompt("Do you want to generate a new commit message?")
                     .default(false)
                     .interact()?;
             if is_generate_new_message_confirmed_by_user {
