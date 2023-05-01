@@ -64,13 +64,11 @@ impl ChatContext {
         system_message.push(&lang);
         system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
 
-        system_message.push("Include a 'Signed-off-by: [author-name] <[author-email]>' line indicating the author of the commit.");
-
-        let author_name = format!("The [author-name]  is {}", name);
-        let author_email = format!("The [author-email] is {}", email);
-        system_message.push(&author_name);
-        system_message.push(&author_email);
-
+        let signed_of_line = format!(
+            "Include a 'Signed-off-by: {} <{}>' line indicating the author of the commit.",
+            name, email
+        );
+        system_message.push(&signed_of_line);
         let mut assistant_message = String::new();
         if emoji_enabled {
             assistant_message.push_str(&format!("🐛 {}\n", translation.commit_fix));
