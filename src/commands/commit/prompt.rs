@@ -67,6 +67,7 @@ pub async fn prompt_for_remote() -> anyhow::Result<Option<String>> {
     let selected_remote = MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Select the remote repository to push changes to:")
         .items(&remote_items)
+        .report(false)
         .interact_opt()?;
 
     if let Some(items) = selected_remote {
