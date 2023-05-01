@@ -20,7 +20,7 @@ fn get_chat_context(config: &AutocommitConfig, diff: &str) -> String {
 }
 
 impl CommitCommand {
-    async fn stage_all_files(&self) -> Result<()> {
+    async fn stage_all_changed_files(&self) -> Result<()> {
         let changed_files = GitRepository::get_changed_files().await?;
 
         if !changed_files.is_empty() {
@@ -63,7 +63,7 @@ impl CommitCommand {
 
         loop {
             if is_stage_all_flag {
-                self.stage_all_files().await?;
+                self.stage_all_changed_files().await?;
             }
 
             let staged_files = GitRepository::get_staged_files().await?;
@@ -112,13 +112,13 @@ impl CommitCommand {
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
                 return self
-                    .generate_commit_message_from_git_diff(config, &staged_diff)
+                    .generate_autocommit_message(config, &staged_diff)
                     .await;
             }
         }
     }
 
-    async fn generate_commit_message_from_git_diff(
+    async fn generate_autocommit_message(
         &self,
         config: &AutocommitConfig,
         staged_diff: &str,
