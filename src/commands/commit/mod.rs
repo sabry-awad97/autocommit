@@ -1,12 +1,13 @@
 use std::{thread, time::Duration};
 
 use crate::utils::{
-    assert_git_repo, generate_message, get_changed_files, get_staged_diff, get_staged_files,
-    get_unicode_string, git_add, spinner, get_colors, Message, MessageRole,
+    assert_git_repo, generate_message, get_changed_files, get_colors, get_staged_diff,
+    get_staged_files, get_unicode_string, git_add, spinner, Message, MessageRole,
 };
 
 use anyhow::{anyhow, Result};
-use dialoguer::Confirm;
+use async_recursion::async_recursion;
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -22,10 +23,11 @@ fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
 }
 
 impl CommitCommand {
-    pub async fn run(&self, config: &AutocommitConfig, stage_all: bool) -> Result<()> {
+    #[async_recursion]
+    pub async fn run(&self, config: &AutocommitConfig, is_stage_all_flag: bool) -> Result<()> {
         assert_git_repo().await?;
 
-        if stage_all {
+        if is_stage_all_flag {
             let changed_files = get_changed_files().await?;
 
             if !changed_files.is_empty() {
@@ -52,16 +54,18 @@ impl CommitCommand {
         if staged_files.is_empty() {
             staged_spinner.stop("No files are staged");
 
-            let s_bar = get_unicode_string("│", "|");
-            let message = format!(
-                "{} {}",
-                get_colors().gray(s_bar),
-                "Do you want to stage all files and generate commit message?"
-            );
             let is_stage_all_and_commit_confirmed_by_user =
-                Confirm::new().with_prompt(message).interact()?;
+                Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt(format!(
+                        "{}",
+                        "Do you want to stage all files and generate commit message?"
+                    ))
+                    .interact_opt()?;
 
-            println!("{}", is_stage_all_and_commit_confirmed_by_user);
+            if is_stage_all_and_commit_confirmed_by_user.is_some() {
+                self.run(config, is_stage_all_flag).await?;
+                std::process::exit(1);
+            }
         }
 
         let staged_diff = get_staged_diff(&[]).await?;
@@ -72,9 +76,7 @@ impl CommitCommand {
 
         // let mesage: String = generate_message(&[prompt]).await?;
         thread::sleep(Duration::from_secs(2));
-        // staged_spinner.stop();
-        println!("\nDone!");
-        // println!("{}", mesage);
+        staged_spinner.stop("Done!");
         Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use std::env;
 
-use structopt::lazy_static::lazy_static;
+use lazy_static::lazy_static;
 
 fn is_unicode_supported() -> bool {
     if cfg!(windows) {
