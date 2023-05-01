@@ -9,7 +9,7 @@ pub async fn push_changes(commit_message: &str, remote: &str) -> anyhow::Result<
     let mut push_spinner = spinner();
     push_spinner.start(format!(
         "Pushing changes to remote repository {}...",
-        remote
+        remote.green()
     ));
     GitRepository::git_push(&remote).await?;
     push_spinner.stop(format!(
@@ -22,7 +22,7 @@ pub async fn push_changes(commit_message: &str, remote: &str) -> anyhow::Result<
         ——————————————————\n\
         {}\n\
         ——————————————————",
-        remote, commit_message
+        remote.green(), commit_message
     ));
 
     Ok(())

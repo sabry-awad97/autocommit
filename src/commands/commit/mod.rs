@@ -73,7 +73,7 @@ impl CommitCommand {
             } else {
                 staged_spinner.stop(format!(
                     "{} staged files:\n{}",
-                    staged_files.len(),
+                    staged_files.len().to_string().green(),
                     staged_files
                         .iter()
                         .map(|file| format!("  {}", file))

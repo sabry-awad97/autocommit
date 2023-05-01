@@ -1,3 +1,4 @@
+use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 
 use crate::{git::GitRepository, utils::outro};
@@ -8,6 +9,19 @@ pub async fn prompt_to_continue() -> anyhow::Result<bool> {
         .with_prompt("Do you want to continue?")
         .interact()?;
     Ok(should_continue)
+}
+
+pub fn prompt_to_commit_changes() -> anyhow::Result<bool> {
+    let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(format!("Do you want to commit these changes?"))
+        .interact_opt()?;
+
+    if let Some(true) = preview_confirmed_by_user {
+        Ok(true)
+    } else {
+        outro("Commit cancelled, exiting...");
+        Ok(false)
+    }
 }
 
 pub async fn prompt_for_remote() -> anyhow::Result<Option<String>> {
@@ -43,7 +57,7 @@ pub async fn prompt_for_selected_files(changed_files: &[String]) -> anyhow::Resu
     let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt(format!(
             "Select the files you want to add to the commit ({} files changed):",
-            changed_files.len()
+            changed_files.len().to_string().green()
         ))
         .items(&changed_files)
         .interact_opt()?;
@@ -80,3 +94,12 @@ pub fn prompt_for_push(remote: &str) -> anyhow::Result<bool> {
         Ok(false)
     }
 }
+
+// pub async fn prompt_for_staged_diff() -> anyhow::Result<String> {
+//     // let staged_diff = GitRepository::get_staged_diff(&[]).await?;
+//     let input = Input::<String>::with_theme(&ColorfulTheme::default())
+//         .with_prompt("Enter the staged diff")
+//         // .with_initial_text(staged_diff)
+//         .interact()?;
+//     Ok(input)
+// }
