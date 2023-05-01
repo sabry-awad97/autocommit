@@ -118,7 +118,7 @@ impl SpinnerState {
             let dots = ".".repeat(self.n_dots.min(self.dots.len()));
 
             let output_str = format!(
-                "{}  {}{}",
+                "{} {}{}",
                 colors.magenta(&frame),
                 self.trimmed_message,
                 colors.magenta(&dots)
@@ -201,7 +201,7 @@ impl Spinner {
         let colors = get_colors();
         
         println!("\n{}", colors.gray(s_bar));
-        println!("{}  {}", colors.green(s_step_submit), message.into());
+        println!("{} {}", colors.green(s_step_submit), message.into());
     }
 
     pub fn set_message<T>(&mut self, message: T)
