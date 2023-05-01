@@ -14,7 +14,7 @@ pub struct I18nTranslation {
     pub commit_fix: String,
     pub commit_feat: String,
     pub commit_description: String,
-    pub local_language: String,
+    pub language: String,
 }
 
 impl I18n {
@@ -39,7 +39,7 @@ pub fn load_i18n() -> I18n {
             Updates:
             - The `serde_json::from_str` function now uses `trim()` function to remove leading/trailing spaces before data parsing. 
             - A `match` expression now handles the `Err` case when making the API request.")),
-            local_language: "English".to_string(),
+            language: "English".to_string(),
         },
     );
 

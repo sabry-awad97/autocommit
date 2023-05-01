@@ -53,11 +53,19 @@ impl ChatContext {
         system_message.push(
             "Use active voice and start with the type of change, such as fix, feat, refactor, etc.",
         );
+        system_message.push("Lines must not be longer than 74 characters.");
 
-        let lang = format!("Use {} to answer.", translation.local_language);
+        let lang = format!("Use {} to answer.", translation.language);
         system_message.push(&lang);
         system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
+        
+        
         system_message.push("Include a 'Signed-off-by' line indicating the author of the commit.");
+        
+        let name = format!("The name of the author is {}", config.config_data.name);
+        let email = format!("The email of the author is {}", config.config_data.email);
+        system_message.push(&name);
+        system_message.push(&email);
 
         let mut assistant_message = String::new();
         if config_data.emoji_enabled {

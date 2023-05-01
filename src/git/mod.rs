@@ -1,3 +1,5 @@
+use std::process::Output;
+
 use anyhow::anyhow;
 use tokio::process::Command;
 
@@ -205,5 +207,35 @@ impl GitRepository {
             .collect();
 
         Ok(remotes)
+    }
+
+    pub fn get_git_email() -> anyhow::Result<String> {
+        let output = std::process::Command::new("git")
+            .arg("config")
+            .arg("user.email")
+            .output()?;
+
+        parse_output(output)
+    }
+
+    pub fn get_git_name() -> anyhow::Result<String> {
+        let output = std::process::Command::new("git")
+            .arg("config")
+            .arg("user.name")
+            .output()?;
+
+        parse_output(output)
+    }
+}
+
+fn parse_output(output: Output) -> anyhow::Result<String> {
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?.trim().to_owned())
+    } else {
+        Err(anyhow!(
+            "Command failed with exit code {}: {}",
+            output.status,
+            String::from_utf8(output.stderr)?.trim()
+        ))
     }
 }

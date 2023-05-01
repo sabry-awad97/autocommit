@@ -6,6 +6,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+use crate::git::GitRepository;
 use crate::i18n::language::Language;
 use crate::utils::outro;
 
@@ -15,6 +16,8 @@ enum ConfigKey {
     DescriptionEnabled,
     EmojiEnabled,
     Language,
+    Name,
+    Email,
 }
 
 impl ConfigKey {
@@ -23,6 +26,8 @@ impl ConfigKey {
             "description" => Some(ConfigKey::DescriptionEnabled),
             "emoji" => Some(ConfigKey::EmojiEnabled),
             "language" => Some(ConfigKey::Language),
+            "name" => Some(ConfigKey::Name),
+            "email" => Some(ConfigKey::Email),
             _ => None,
         }
     }
@@ -40,17 +45,23 @@ pub struct ConfigData {
     pub description_enabled: bool,
     pub emoji_enabled: bool,
     pub language: Language,
+    pub name: String,
+    pub email: String,
 }
 
 impl AutocommitConfig {
-    fn new() -> AutocommitConfig {
-        AutocommitConfig {
+    fn new() -> anyhow::Result<Self> {
+        let name = GitRepository::get_git_name()?;
+        let email = GitRepository::get_git_email()?;
+        Ok(Self {
             config_data: ConfigData {
                 description_enabled: false,
                 emoji_enabled: false,
                 language: Language::English,
+                name,
+                email,
             },
-        }
+        })
     }
 
     // This function reads the configuration from a file
@@ -96,7 +107,7 @@ impl AutocommitConfig {
                     .and_then(|e| e.downcast_ref::<std::io::Error>())
                 {
                     if io_error.kind() == std::io::ErrorKind::NotFound {
-                        let new_config = AutocommitConfig::new();
+                        let new_config = AutocommitConfig::new()?;
                         new_config.to_file(path)?;
                         Ok(new_config)
                     } else {
@@ -204,7 +215,7 @@ impl ConfigCommand {
                     return Err(error);
                 }
 
-                outro(&"Config successfully set".green());
+                outro(&format!("{} Config successfully set", "✔".green()));
             }
         }
 
