@@ -9,6 +9,7 @@ use super::generate;
 pub async fn prompt_to_continue() -> anyhow::Result<bool> {
     let should_continue = Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt("Do you want to continue?")
+        .default(false)
         .interact()?;
     Ok(should_continue)
 }
