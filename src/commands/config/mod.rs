@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use structopt::StructOpt;
 
 use crate::git::GitRepository;
@@ -19,18 +20,36 @@ enum ConfigKey {
     Name,
     Email,
     DefaultCommitMessage,
+    DefaultPushBehavior,
 }
 
-impl ConfigKey {
-    fn from_str(key: &str) -> Option<ConfigKey> {
-        match key {
-            "description" => Some(ConfigKey::DescriptionEnabled),
-            "emoji" => Some(ConfigKey::EmojiEnabled),
-            "language" => Some(ConfigKey::Language),
-            "name" => Some(ConfigKey::Name),
-            "email" => Some(ConfigKey::Email),
-            "commit_message" => Some(ConfigKey::DefaultCommitMessage),
-            _ => None,
+impl std::fmt::Display for ConfigKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigKey::DescriptionEnabled => write!(f, "description"),
+            ConfigKey::EmojiEnabled => write!(f, "emoji"),
+            ConfigKey::Language => write!(f, "language"),
+            ConfigKey::Name => write!(f, "name"),
+            ConfigKey::Email => write!(f, "email"),
+            ConfigKey::DefaultCommitMessage => write!(f, "default_commit_message"),
+            ConfigKey::DefaultPushBehavior => write!(f, "default_push_behavior"),
+        }
+    }
+}
+
+impl std::str::FromStr for ConfigKey {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "description" => Ok(ConfigKey::DescriptionEnabled),
+            "emoji" => Ok(ConfigKey::EmojiEnabled),
+            "language" => Ok(ConfigKey::Language),
+            "name" => Ok(ConfigKey::Name),
+            "email" => Ok(ConfigKey::Email),
+            "default_commit_message" => Ok(ConfigKey::DefaultCommitMessage),
+            "default_push_behavior" => Ok(ConfigKey::DefaultPushBehavior),
+            _ => Err(format!("Invalid ConfigKey: {}", s)),
         }
     }
 }
@@ -50,6 +69,7 @@ pub struct ConfigData {
     pub name: String,
     pub email: String,
     pub default_commit_message: Option<String>,
+    pub default_push_behavior: Option<String>,
 }
 
 const POSSIBLE_VALUES: &[&str; 6] = &[
@@ -58,7 +78,7 @@ const POSSIBLE_VALUES: &[&str; 6] = &[
     "language",
     "name",
     "email",
-    "commit_message",
+    "default_commit_message",
 ];
 impl AutocommitConfig {
     fn new() -> anyhow::Result<Self> {
@@ -72,6 +92,7 @@ impl AutocommitConfig {
                 name,
                 email,
                 default_commit_message: None,
+                default_push_behavior: None,
             },
         })
     }
@@ -132,6 +153,60 @@ impl AutocommitConfig {
             }
         }
     }
+
+    fn update_config(&mut self, key: &ConfigKey, value: &str) -> Result<()> {
+        match key {
+            ConfigKey::DescriptionEnabled => match value.parse() {
+                Ok(value) => self.config_data.description_enabled = value,
+                Err(_) => return Err(anyhow!("Invalid value for description")),
+            },
+            ConfigKey::EmojiEnabled => match value.parse() {
+                Ok(value) => self.config_data.emoji_enabled = value,
+                Err(_) => return Err(anyhow!("Invalid value for emoji")),
+            },
+            ConfigKey::Language => match value {
+                "english" => self.config_data.language = Language::English,
+                _ => return Err(anyhow!("Unsupported language")),
+            },
+            _ => {
+                return Err(anyhow!("Unsupported config key: {}", key));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn get_config_value(&self, key: &ConfigKey) -> String {
+        match key {
+            ConfigKey::DescriptionEnabled => self.config_data.description_enabled.to_string(),
+            ConfigKey::EmojiEnabled => self.config_data.emoji_enabled.to_string(),
+            ConfigKey::Language => format!("{:?}", self.config_data.language).to_lowercase(),
+            ConfigKey::Name => format!("{:?}", self.config_data.name).to_lowercase(),
+            ConfigKey::Email => format!("{:?}", self.config_data.email).to_lowercase(),
+            ConfigKey::DefaultCommitMessage => format!(
+                "{:?}",
+                self.config_data
+                    .default_commit_message
+                    .clone()
+                    .unwrap_or_default()
+            )
+            .to_lowercase(),
+            ConfigKey::DefaultPushBehavior => format!(
+                "{:?}",
+                self.config_data
+                    .default_push_behavior
+                    .clone()
+                    .unwrap_or_default()
+            )
+            .to_lowercase(),
+        }
+    }
+
+    fn get_config_values(&self, keys: &[ConfigKey]) -> Vec<(String, String)> {
+        keys.iter()
+            .map(|key| (key.to_string(), self.get_config_value(key)))
+            .collect()
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -165,33 +240,30 @@ impl ConfigCommand {
         let mut config = self.get_config()?;
         match self {
             ConfigCommand::Get { keys, .. } => {
-                let config_data = config.config_data;
-
-                let description = config_data.description_enabled.to_string();
-                let emoji = config_data.emoji_enabled.to_string();
-                let language = format!("{:?}", config_data.language).to_lowercase();
-
-                if keys.is_empty() {
-                    println!("{} = {}", "description".bold(), description.green());
-                    println!("{} = {}", "emoji".bold(), emoji.green());
-                    println!("{} = {}", "language".bold(), language.green());
+                let config_values = if keys.is_empty() {
+                    let all_keys = [
+                        ConfigKey::DescriptionEnabled,
+                        ConfigKey::EmojiEnabled,
+                        ConfigKey::Language,
+                        ConfigKey::Name,
+                        ConfigKey::Email,
+                        ConfigKey::DefaultCommitMessage,
+                        ConfigKey::DefaultPushBehavior,
+                    ];
+                    config.get_config_values(&all_keys)
                 } else {
-                    for key in keys {
-                        match ConfigKey::from_str(key) {
-                            Some(ConfigKey::DescriptionEnabled) => {
-                                println!("{} = {}", key.bold(), description.green());
-                            }
-                            Some(ConfigKey::EmojiEnabled) => {
-                                println!("{} = {}", key.bold(), emoji.green());
-                            }
-                            Some(ConfigKey::Language) => {
-                                println!("{} = {}", key.bold(), language.green());
-                            }
-                            _ => {
-                                return Err(anyhow!("Unsupported config key: {}", key));
-                            }
-                        }
-                    }
+                    keys.iter()
+                        .map(|key| {
+                            ConfigKey::from_str(key).map(|config_key| {
+                                (key.to_string(), config.get_config_value(&config_key))
+                            })
+                        })
+                        .filter_map(Result::ok)
+                        .collect()
+                };
+
+                for (key, value) in config_values {
+                    println!("{} = {}", key.bold(), value.green());
                 }
             }
             ConfigCommand::Set { key_values, .. } => {
@@ -204,29 +276,13 @@ impl ConfigCommand {
                     let key = parts[0].trim();
                     let value = parts[1].trim();
 
-                    match ConfigKey::from_str(key) {
-                        Some(ConfigKey::DescriptionEnabled) => match value.parse() {
-                            Ok(value) => config.config_data.description_enabled = value,
-                            Err(_) => return Err(anyhow!("Invalid value for description")),
-                        },
-                        Some(ConfigKey::EmojiEnabled) => match value.parse() {
-                            Ok(value) => config.config_data.emoji_enabled = value,
-                            Err(_) => return Err(anyhow!("Invalid value for emoji")),
-                        },
-                        Some(ConfigKey::Language) => match value {
-                            "english" => config.config_data.language = Language::English,
-                            _ => return Err(anyhow!("Unsupported language")),
-                        },
-                        _ => {
-                            return Err(anyhow!("Unsupported config key: {}", key));
-                        }
-                    }
+                    let config_key = ConfigKey::from_str(key)
+                        .map_err(|_| anyhow!("Unsupported config key: {}", key))?;
+
+                    config.update_config(&config_key, value)?;
                 }
 
-                if let Err(error) = config.to_file(&self.get_config_path()) {
-                    return Err(error);
-                }
-
+                config.to_file(&self.get_config_path())?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
         }
