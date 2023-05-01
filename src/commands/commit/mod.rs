@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::time::Duration;
 
 use crate::git::GitRepository;
 use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
@@ -71,14 +71,13 @@ impl CommitCommand {
             let changed_files = GitRepository::get_changed_files().await?;
 
             if staged_files.is_empty() && changed_files.is_empty() {
-                return Err(anyhow!(
-                    "No changes detected, write some code and run again"
-                ));
+                outro("No changes detected, exiting...");
+                return Ok(());
             }
 
             let mut staged_spinner = spinner();
             staged_spinner.start("Counting staged files");
-            thread::sleep(Duration::from_millis(500));
+            tokio::time::sleep(Duration::from_millis(500)).await;
             if staged_files.is_empty() {
                 staged_spinner.stop("No files are staged");
 
@@ -99,7 +98,8 @@ impl CommitCommand {
                     is_stage_all_flag = false;
                     continue;
                 } else {
-                    return Err(anyhow!("No files selected for staging"));
+                    outro("No files selected for staging, exiting...");
+                    return Ok(());
                 }
             } else {
                 staged_spinner.stop(format!(
@@ -146,15 +146,42 @@ impl CommitCommand {
             .with_prompt(format!("Do you want to commit these changes?"))
             .interact_opt()?;
 
-        if preview_confirmed_by_user.is_some() {
+        if let Some(true) = preview_confirmed_by_user {
             self.commit_changes(&commit_message).await?;
+            let remotes = GitRepository::get_git_remotes().await?;
+
+            let remote = if remotes.len() == 1 {
+                &remotes[0]
+            } else {
+                let remote_items = remotes.iter().map(|r| r.as_str()).collect::<Vec<_>>();
+                let selected_remote = MultiSelect::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Select the remote repository to push changes to:")
+                    .items(&remote_items)
+                    .interact_opt()?;
+                if let Some(items) = selected_remote {
+                    if items.is_empty() {
+                        outro("No remote repository selected, exiting...");
+                        return Ok(());
+                    }
+                    remotes[items[0]].as_str()
+                } else {
+                    outro("No remote repository selected, exiting...");
+                    return Ok(());
+                }
+            };
+
             let push_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Do you want to push these changes to the remote repository?")
+                .with_prompt(format!(
+                    "Do you want to push these changes to the remote repository {}?",
+                    remote
+                ))
                 .interact_opt()?;
 
             if let Some(true) = push_confirmed_by_user {
-                self.push_changes().await?;
+                self.push_changes(remote).await?;
             }
+        } else {
+            outro("Commit cancelled, exiting...");
         }
 
         Ok(())
@@ -168,16 +195,14 @@ impl CommitCommand {
         Ok(())
     }
 
-    async fn push_changes(&self) -> Result<()> {
+    async fn push_changes(&self, remote: &str) -> Result<()> {
         let mut push_spinner = spinner();
-        push_spinner.start("Pushing changes to remote repository...");
-        let remotes = GitRepository::get_git_remotes().await?;
-        push_spinner.set_message(format!("Running `git push {}`", remotes[0]));
-        GitRepository::git_push(&remotes[0]).await?;
-        push_spinner.stop(format!(
-            "✔ Changes pushed to remote repository {}",
-            remotes[0]
+        push_spinner.start(format!(
+            "Pushing changes to remote repository {}...",
+            remote
         ));
+        GitRepository::git_push(&remote).await?;
+        push_spinner.stop(format!("✔ Changes pushed to remote repository {}", remote));
         Ok(())
     }
 }
