@@ -16,10 +16,16 @@ mod chat_context;
 
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {
-    #[structopt(name = "all", short, long)]
-    is_stage_all_flag: bool,
+    #[structopt(short, long)]
+    stage_all: bool,
     #[structopt(short, long)]
     branch_name: Option<String>,
+
+    #[structopt(short, long)]
+    default_commit_message: Option<String>,
+
+    #[structopt(long)]
+    skip_chatbot: bool,
 }
 
 impl CommitCommand {
@@ -41,7 +47,7 @@ impl CommitCommand {
         info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
         loop {
-            if self.is_stage_all_flag {
+            if self.stage_all {
                 Self::stage_all_changed_files().await?;
             }
 
@@ -66,12 +72,12 @@ impl CommitCommand {
                         .interact_opt()?;
 
                 if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
-                    self.is_stage_all_flag = true;
+                    self.stage_all = true;
                     continue;
                 } else if changed_files.len() > 0 {
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
                     GitRepository::git_add(&files).await?;
-                    self.is_stage_all_flag = false;
+                    self.stage_all = false;
                     continue;
                 } else {
                     outro(&format!(
@@ -92,17 +98,32 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                let commit_message =
-                    Self::generate_autocommit_message(config, &staged_diff).await?;
 
-                if let Ok(Some(new_message)) =
-                    Self::prompt_to_commit_changes(config, &staged_diff, &commit_message).await
+                let commit_message = if self.skip_chatbot {
+                    if let Some(default_message) = &self.default_commit_message {
+                        outro(&format!(
+                            "Using default commit message:\n{}\n",
+                            default_message
+                        ));
+                        default_message.clone()
+                    } else {
+                        return Err(anyhow!("No default commit message provided"));
+                    }
+                } else {
+                    self.generate_autocommit_message(config, &staged_diff)
+                        .await?
+                };
+
+                if let Ok(Some(new_message)) = self
+                    .prompt_to_commit_changes(config, &staged_diff, &commit_message)
+                    .await
                 {
-                    Self::commit_changes(&new_message, self.branch_name.clone()).await?;
+                    self.commit_changes(&new_message).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
                         if let Ok(true) = Self::prompt_for_push(&remote) {
                             Self::pull_changes(&remote).await?;
-                            Self::push_changes(&new_message, &remote, self.branch_name.clone()).await?;
+                            Self::push_changes(&new_message, &remote, self.branch_name.clone())
+                                .await?;
                             info!("Autocommit process completed successfully");
                         }
                     }
@@ -114,20 +135,17 @@ impl CommitCommand {
                     return Ok(());
                 }
 
-                self.is_stage_all_flag = false;
+                self.stage_all = false;
             }
         }
     }
 
-    pub async fn commit_changes(
-        commit_message: &str,
-        branch_name: Option<String>,
-    ) -> anyhow::Result<()> {
+    pub async fn commit_changes(&self, commit_message: &str) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
 
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
-        GitRepository::git_checkout_new_branch(branch_name).await?;
+        GitRepository::git_checkout_new_branch(self.branch_name.clone()).await?;
         GitRepository::git_commit(&commit_message).await?;
         GitRepository::git_add_all().await?;
         commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
@@ -169,6 +187,7 @@ impl CommitCommand {
     }
 
     pub async fn prompt_to_commit_changes(
+        &self,
         config: &AutocommitConfig,
         staged_diff: &str,
         commit_message: &str,
@@ -185,7 +204,9 @@ impl CommitCommand {
                 let mut new_content =
                     String::from("Suggest a professional git commit message with gitmoji\n");
                 new_content.push_str(&staged_diff);
-                message = Self::generate_autocommit_message(config, &new_content).await?;
+                message = self
+                    .generate_autocommit_message(config, &new_content)
+                    .await?;
             } else {
                 break;
             }
@@ -198,6 +219,12 @@ impl CommitCommand {
 
         if let Some(true) = preview_confirmed_by_user {
             Ok(Some(message))
+        } else if let Some(default_message) = &self.default_commit_message {
+            outro(&format!(
+                "Using default commit message:\n{}\n",
+                default_message
+            ));
+            Ok(Some(default_message.clone()))
         } else {
             outro("Commit cancelled, exiting...");
             Ok(None)
@@ -205,6 +232,7 @@ impl CommitCommand {
     }
 
     pub async fn generate_autocommit_message(
+        &self,
         config: &AutocommitConfig,
         content: &str,
     ) -> anyhow::Result<String> {
@@ -215,7 +243,15 @@ impl CommitCommand {
         let mut chat_context = ChatContext::get_initial_context(config);
         chat_context.add_message(MessageRole::User, content.to_owned());
 
-        let commit_message = chat_context.generate_message().await?;
+        let commit_message = if let Some(default_message) = &self.default_commit_message {
+            outro(&format!(
+                "Using default commit message:\n{}\n",
+                default_message
+            ));
+            default_message.clone()
+        } else {
+            chat_context.generate_message().await?
+        };
         commit_spinner.stop("📝 Commit message generated successfully");
 
         let separator_length = 40;
