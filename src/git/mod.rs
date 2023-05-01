@@ -153,4 +153,36 @@ impl GitRepository {
 
         Ok(())
     }
+
+    pub async fn git_commit(message: &str) -> anyhow::Result<()> {
+        let output = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .output()
+            .await
+            .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
+
+        if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(anyhow!(error_message));
+        }
+
+        Ok(())
+    }
+
+    pub async fn git_push(remote: &str) -> anyhow::Result<()> {
+        let output = Command::new("git")
+            .args(&["push", remote])
+            .output()
+            .await
+            .map_err(|e| anyhow!("failed to execute 'git push' command: {}", e))?;
+
+        if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(anyhow!(error_message));
+        }
+
+        Ok(())
+    }
 }
