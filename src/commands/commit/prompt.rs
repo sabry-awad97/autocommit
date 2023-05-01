@@ -119,12 +119,3 @@ pub fn prompt_for_push(remote: &str) -> anyhow::Result<bool> {
         Ok(false)
     }
 }
-
-// pub async fn prompt_for_staged_diff() -> anyhow::Result<String> {
-//     // let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-//     let input = Input::<String>::with_theme(&ColorfulTheme::default())
-//         .with_prompt("Enter the staged diff")
-//         // .with_initial_text(staged_diff)
-//         .interact()?;
-//     Ok(input)
-// }
