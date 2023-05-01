@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{
     commands::commit::chat_context::ChatContext,
     git::GitRepository,
@@ -9,6 +7,7 @@ use anyhow::anyhow;
 use colored::{Color, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 use log::info;
+use std::time::Duration;
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -37,6 +36,7 @@ impl CommitCommand {
         &self,
         config: &AutocommitConfig,
         mut is_stage_all_flag: bool,
+        branch_name: Option<String>,
     ) -> anyhow::Result<()> {
         info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
@@ -99,10 +99,11 @@ impl CommitCommand {
                 if let Ok(Some(new_message)) =
                     Self::prompt_to_commit_changes(config, &staged_diff, &commit_message).await
                 {
-                    Self::commit_changes(&new_message).await?;
+                    Self::commit_changes(&new_message, branch_name.clone()).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
                         if let Ok(true) = Self::prompt_for_push(&remote) {
-                            Self::push_changes(&new_message, &remote).await?;
+                            Self::pull_changes(&remote).await?;
+                            Self::push_changes(&new_message, &remote, branch_name.clone()).await?;
                             info!("Autocommit process completed successfully");
                         }
                     }
@@ -119,23 +120,47 @@ impl CommitCommand {
         }
     }
 
-    pub async fn commit_changes(commit_message: &str) -> anyhow::Result<()> {
+    pub async fn commit_changes(
+        commit_message: &str,
+        branch_name: Option<String>,
+    ) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
 
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
+        GitRepository::git_checkout_new_branch(branch_name).await?;
         GitRepository::git_commit(&commit_message).await?;
+        GitRepository::git_add_all().await?;
         commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
         Ok(())
     }
 
-    pub async fn push_changes(_commit_message: &str, remote: &str) -> anyhow::Result<()> {
+    pub async fn pull_changes(remote: &str) -> anyhow::Result<()> {
+        let mut pull_spinner = spinner();
+        pull_spinner.start(format!(
+            "Pulling changes from remote repository {}...",
+            remote.green().bold()
+        ));
+        GitRepository::git_pull(&remote).await?;
+        pull_spinner.stop(format!(
+            "{} Changes pulled successfully from remote repository {}.",
+            "✔".green(),
+            remote.green().bold()
+        ));
+        Ok(())
+    }
+
+    pub async fn push_changes(
+        _commit_message: &str,
+        remote: &str,
+        branch_name: Option<String>,
+    ) -> anyhow::Result<()> {
         let mut push_spinner = spinner();
         push_spinner.start(format!(
             "Pushing changes to remote repository {}...",
             remote.green().bold()
         ));
-        GitRepository::git_push(&remote).await?;
+        GitRepository::git_push(&remote, branch_name).await?;
         push_spinner.stop(format!(
             "{} Changes pushed successfully to remote repository {}.",
             "✔".green(),

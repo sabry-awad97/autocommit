@@ -21,6 +21,8 @@ struct CLI {
 
     #[structopt(short, long)]
     all: bool,
+    #[structopt(short, long)]
+    branch_name: Option<String>,
 }
 
 #[tokio::main]
@@ -52,7 +54,7 @@ async fn main() {
                     return;
                 }
             };
-            match commit.run(&config, cli.all).await {
+            match commit.run(&config, cli.all, cli.branch_name).await {
                 Ok(_) => (),
                 Err(e) => {
                     let message = &format!("{} {}", "✖".red(), e);

@@ -156,6 +156,16 @@ impl GitRepository {
         Ok(())
     }
 
+    pub async fn git_add_all() -> anyhow::Result<()> {
+        let output = Command::new("git").arg("add").arg("--all").output().await?;
+
+        if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("Error: {}", error_message));
+        }
+        Ok(())
+    }
+
     pub async fn git_commit(message: &str) -> anyhow::Result<()> {
         let output = Command::new("git")
             .arg("commit")
@@ -173,18 +183,34 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_push(remote: &str) -> anyhow::Result<()> {
-        let output = Command::new("git")
-            .args(&["push", "--verbose", remote])
-            .output()
-            .await
-            .map_err(|e| anyhow!("failed to execute 'git push --verbose' command: {}", e))?;
+    pub async fn git_pull(remote: &str) -> anyhow::Result<()> {
+        let output = Command::new("git").arg("pull").arg(remote).output().await?;
 
         if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            return Err(anyhow!(error_message));
+            return Err(anyhow!(
+                "Failed to pull changes from remote repository {}: {}",
+                remote,
+                String::from_utf8_lossy(&output.stderr)
+            ));
         }
+        Ok(())
+    }
 
+    pub async fn git_push(remote: &str, branch: Option<String>) -> anyhow::Result<()> {
+        let mut command = Command::new("git");
+        command.arg("push").arg("--verbose").arg(remote);
+        if let Some(branch_name) = branch {
+            command.arg(branch_name);
+        }
+        let output = command.output().await?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "Failed to push changes to remote repository {}: {}",
+                remote,
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
         Ok(())
     }
 
@@ -225,6 +251,27 @@ impl GitRepository {
             .output()?;
 
         parse_output(output)
+    }
+
+    pub async fn git_checkout_new_branch(branch_name: Option<String>) -> anyhow::Result<()> {
+        let mut cmd = Command::new("git");
+        cmd.arg("checkout");
+
+        if let Some(name) = branch_name.clone() {
+            cmd.arg("-b").arg(name);
+        }
+
+        let output = cmd.output().await?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "Failed to checkout new branch {}: {}",
+                branch_name.unwrap_or("".to_string()),
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+
+        Ok(())
     }
 }
 
