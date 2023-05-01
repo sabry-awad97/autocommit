@@ -94,7 +94,6 @@ impl CommitCommand {
                         break;
                     }
 
-
                     let editor = Editor::new();
 
                     if let Some(new_message) = editor.edit(&commit_message)? {
@@ -111,13 +110,12 @@ impl CommitCommand {
                             .interact()?;
                     if is_generate_new_message_confirmed_by_user {
                         // let new_content = prompt::prompt_for_new_message().await?;
-                        let mut new_content = String::from("Suggest new commit message");
+                        let mut new_content = String::from("Suggest new git commit message\n");
                         new_content.push_str(&staged_diff);
                         commit_message =
                             generate::generate_autocommit_message(config, &new_content).await?;
                     } else {
-                        outro(&format!("{}", "Exiting...".red()));
-                        return Ok(());
+                        break;
                     }
                 }
 
