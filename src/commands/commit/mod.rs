@@ -10,7 +10,7 @@ use log::info;
 use std::time::Duration;
 use structopt::StructOpt;
 
-use super::config::AutocommitConfig;
+use super::config::{AutocommitConfig, YesNo};
 
 mod chat_context;
 
@@ -24,6 +24,8 @@ pub struct CommitCommand {
     skip_chatbot: bool,
     #[structopt(long)]
     skip_push_confirmation: bool,
+    #[structopt(long)]
+    skip_commit_confirmation: bool,
 }
 
 impl CommitCommand {
@@ -118,7 +120,8 @@ impl CommitCommand {
                 {
                     self.commit_changes(&new_message).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
-                        if Self::prompt_for_push(&remote, config).unwrap_or(false) || self.skip_push_confirmation
+                        if Self::prompt_for_push(&remote, config).unwrap_or(false)
+                            || self.skip_push_confirmation
                         {
                             Self::pull_changes(&remote).await?;
                             Self::push_changes(&new_message, &remote, self.branch_name.clone())
@@ -193,41 +196,46 @@ impl CommitCommand {
     ) -> anyhow::Result<Option<String>> {
         let mut message = commit_message.to_string();
 
-        loop {
-            let is_generate_new_message_confirmed_by_user =
-                Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Do you want to generate a new commit message?")
-                    .default(false)
-                    .interact()?;
-            if is_generate_new_message_confirmed_by_user {
-                let mut new_content =
-                    String::from("Suggest a professional git commit message with gitmoji\n");
-                new_content.push_str(&staged_diff);
-                message = self
-                    .generate_autocommit_message(config, &new_content)
-                    .await?;
-            } else {
-                break;
+        if !self.skip_commit_confirmation {
+            loop {
+                let is_generate_new_message_confirmed_by_user =
+                    Confirm::with_theme(&ColorfulTheme::default())
+                        .with_prompt("Do you want to generate a new commit message?")
+                        .default(false)
+                        .interact()?;
+                if is_generate_new_message_confirmed_by_user {
+                    let mut new_content =
+                        String::from("Suggest a professional git commit message with gitmoji\n");
+                    new_content.push_str(&staged_diff);
+                    message = self
+                        .generate_autocommit_message(config, &new_content)
+                        .await?;
+                } else {
+                    break;
+                }
+            }
+
+            let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!("Do you want to commit these changes?"))
+                .default(true)
+                .interact_opt()?;
+
+            if let Some(false) = preview_confirmed_by_user {
+                outro("Commit cancelled, exiting...");
+                return Ok(None);
+            }
+        } else if let Some(default_commit_behavior) = &config.config_data.default_commit_behavior {
+            outro(&format!(
+                "Using default commit behavior: {}\n",
+                default_commit_behavior
+            ));
+            if *default_commit_behavior == YesNo::No {
+                outro("Commit cancelled, exiting...");
+                return Ok(None);
             }
         }
 
-        let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!("Do you want to commit these changes?"))
-            .default(true)
-            .interact_opt()?;
-
-        if let Some(true) = preview_confirmed_by_user {
-            Ok(Some(message))
-        } else if let Some(default_message) = &config.config_data.default_commit_message {
-            outro(&format!(
-                "Using default commit message:\n{}\n",
-                default_message
-            ));
-            Ok(Some(default_message.clone()))
-        } else {
-            outro("Commit cancelled, exiting...");
-            Ok(None)
-        }
+        Ok(Some(message))
     }
 
     pub async fn generate_autocommit_message(
@@ -344,15 +352,9 @@ impl CommitCommand {
                     "Using default push behavior: {}\n",
                     default_push_behavior
                 ));
-                match default_push_behavior.as_str() {
-                    "yes" => true,
-                    "no" => false,
-                    _ => {
-                        return Err(anyhow!(
-                            "Invalid default push behavior: {}",
-                            default_push_behavior
-                        ))
-                    }
+                match default_push_behavior {
+                    YesNo::Yes => true,
+                    YesNo::No => false,
                 }
             }
             _ => Confirm::with_theme(&ColorfulTheme::default())

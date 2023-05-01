@@ -21,7 +21,19 @@ enum ConfigKey {
     Email,
     DefaultCommitMessage,
     DefaultPushBehavior,
+    DefaultCommitBehavior,
 }
+
+const ALL_KEYS: [ConfigKey; 8] = [
+    ConfigKey::DescriptionEnabled,
+    ConfigKey::EmojiEnabled,
+    ConfigKey::Language,
+    ConfigKey::Name,
+    ConfigKey::Email,
+    ConfigKey::DefaultCommitMessage,
+    ConfigKey::DefaultPushBehavior,
+    ConfigKey::DefaultCommitBehavior,
+];
 
 impl std::fmt::Display for ConfigKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -33,6 +45,7 @@ impl std::fmt::Display for ConfigKey {
             ConfigKey::Email => write!(f, "email"),
             ConfigKey::DefaultCommitMessage => write!(f, "default_commit_message"),
             ConfigKey::DefaultPushBehavior => write!(f, "default_push_behavior"),
+            ConfigKey::DefaultCommitBehavior => write!(f, "default_commit_behavior"),
         }
     }
 }
@@ -60,6 +73,29 @@ pub struct AutocommitConfig {
     pub config_data: ConfigData,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(untagged)]
+#[serde(rename_all = "lowercase")]
+pub enum YesNo {
+    Yes,
+    No,
+}
+
+impl Default for YesNo {
+    fn default() -> Self {
+        Self::No
+    }
+}
+
+impl std::fmt::Display for YesNo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            YesNo::Yes => write!(f, "yes"),
+            YesNo::No => write!(f, "no"),
+        }
+    }
+}
+
 // This struct represents the configuration data
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigData {
@@ -69,16 +105,18 @@ pub struct ConfigData {
     pub name: String,
     pub email: String,
     pub default_commit_message: Option<String>,
-    pub default_push_behavior: Option<String>,
+    pub default_push_behavior: Option<YesNo>,
+    pub default_commit_behavior: Option<YesNo>,
 }
 
-const POSSIBLE_VALUES: &[&str; 6] = &[
+const POSSIBLE_VALUES: &[&str; 7] = &[
     "description",
     "emoji",
     "language",
     "name",
     "email",
     "default_commit_message",
+    "default_commit_behavior",
 ];
 impl AutocommitConfig {
     fn new() -> anyhow::Result<Self> {
@@ -93,6 +131,7 @@ impl AutocommitConfig {
                 email,
                 default_commit_message: None,
                 default_push_behavior: None,
+                default_commit_behavior: None,
             },
         })
     }
@@ -199,6 +238,14 @@ impl AutocommitConfig {
                     .unwrap_or_default()
             )
             .to_lowercase(),
+            ConfigKey::DefaultCommitBehavior => format!(
+                "{:?}",
+                self.config_data
+                    .default_push_behavior
+                    .clone()
+                    .unwrap_or_default()
+            )
+            .to_lowercase(),
         }
     }
 
@@ -241,16 +288,7 @@ impl ConfigCommand {
         match self {
             ConfigCommand::Get { keys, .. } => {
                 let config_values = if keys.is_empty() {
-                    let all_keys = [
-                        ConfigKey::DescriptionEnabled,
-                        ConfigKey::EmojiEnabled,
-                        ConfigKey::Language,
-                        ConfigKey::Name,
-                        ConfigKey::Email,
-                        ConfigKey::DefaultCommitMessage,
-                        ConfigKey::DefaultPushBehavior,
-                    ];
-                    config.get_config_values(&all_keys)
+                    config.get_config_values(&ALL_KEYS)
                 } else {
                     keys.iter()
                         .map(|key| {
