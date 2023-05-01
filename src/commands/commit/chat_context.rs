@@ -5,6 +5,7 @@ use crate::{
     utils::{Message, MessageRole},
 };
 use lazy_static::lazy_static;
+use log::{debug, info};
 
 pub struct ChatContext {
     messages: Vec<Message>,
@@ -15,26 +16,30 @@ impl ChatContext {
         self.messages.push(Message::new(role, content));
     }
 
-    fn get_messages(&self) -> &Vec<Message> {
+    pub fn get_messages(&self) -> &Vec<Message> {
         &self.messages
     }
 
     pub fn get_initial_context(config: &AutocommitConfig) -> ChatContext {
         let translation = i18n::get_translation(&Language::English).unwrap();
         let config_data = &config.config_data;
+        let emoji_enabled = config_data.emoji_enabled;
+        let description_enabled = config_data.description_enabled;
+        let name = &config_data.name;
+        let email = &config_data.email;
 
         let mut system_message = vec![
             "You are to act as the author of a commit message in git.",
             "Your mission is to create clean and comprehensive commit messages in the conventional commit convention and explain why a change was done."
         ];
 
-        if config_data.emoji_enabled {
+        if emoji_enabled {
             system_message.push("Use GitMoji convention to preface the commit.");
         } else {
             system_message.push("Do not preface the commit with anything.");
         }
 
-        if config_data.description_enabled {
+        if description_enabled {
             system_message.push("Be specific and concise in the commit message summary, highlighting the most important change(s).");
             system_message.push("Provide more detailed explanation in the commit description, including any relevant context or reasoning behind the change.");
             system_message.push("Don't start it with 'This commit', just describe the changes.");
@@ -61,24 +66,21 @@ impl ChatContext {
 
         system_message.push("Include a 'Signed-off-by: [author-name] <[author-email]>' line indicating the author of the commit.");
 
-        let author_name = format!("The [author-name]  is {}", &config.config_data.name);
-        let author_email = format!("The [author-email] is {}", &config.config_data.email);
+        let author_name = format!("The [author-name]  is {}", name);
+        let author_email = format!("The [author-email] is {}", email);
         system_message.push(&author_name);
         system_message.push(&author_email);
 
         let mut assistant_message = String::new();
-        if config_data.emoji_enabled {
+        if emoji_enabled {
             assistant_message.push_str(&format!("🐛 {}\n", translation.commit_fix));
             assistant_message.push_str(&format!("✨ {}\n", translation.commit_feat));
         }
-        if config_data.description_enabled {
+        if description_enabled {
             assistant_message.push_str(&translation.commit_description);
         }
 
-        let author_line = format!(
-            "Signed-off-by: {} <{}>",
-            &config.config_data.name, &config.config_data.email
-        );
+        let author_line = format!("Signed-off-by: {} <{}>", name, email);
         assistant_message.push_str(&author_line);
         let mut context = ChatContext { messages: vec![] };
         context.add_message(MessageRole::System, system_message.join("\n\n"));
@@ -89,7 +91,9 @@ impl ChatContext {
     }
 
     pub async fn generate_message(&mut self) -> anyhow::Result<String> {
+        debug!("Generating commit message...");
         let commit_message = generate_message(self.get_messages()).await?;
+        info!("Commit message generated: {}", &commit_message);
         self.add_message(MessageRole::Assistant, commit_message.to_owned());
         Ok(commit_message)
     }

@@ -94,6 +94,7 @@ impl CommitCommand {
                         outro(&format!("{}", "Exiting...".red()));
                         break;
                     }
+                    
 
                     let editor = Editor::new();
 
