@@ -1,8 +1,6 @@
 use std::{thread, time::Duration};
 
-use crate::utils::{
-    generate_message, get_colors, get_unicode_string, spinner, Message, MessageRole,
-};
+use crate::utils::{generate_message, spinner, Message, MessageRole};
 
 use crate::git::GitRepository;
 
@@ -12,26 +10,6 @@ use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
-
-struct CommitPrompt<'a> {
-    config: &'a AutocommitConfig,
-    diff: String,
-}
-
-impl<'a> CommitPrompt<'a> {
-    fn new(config: &'a AutocommitConfig, diff: String) -> Self {
-        Self { config, diff }
-    }
-
-    fn prompt(&self) -> Result<String> {
-        let language = format!("{:?}", self.config.config_data.language).to_lowercase();
-        let prompt_text = format!("Write a git commit message in present tense for the following diff without prefacing it with anything. Do not be needlessly verbose and make sure the answer is concise and to the point. The response must be in the language {}: \n{}", language, self.diff);
-        let prompt: String = dialoguer::Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(prompt_text)
-            .interact_text()?;
-        Ok(prompt)
-    }
-}
 
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
@@ -45,7 +23,7 @@ fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
 
 impl CommitCommand {
     #[async_recursion]
-    pub async fn run(&self, config: &AutocommitConfig, is_stage_all_flag: bool) -> Result<()> {
+    pub async fn run(&self, config: &AutocommitConfig, is_stage_all_flag: bool) -> Result<String> {
         GitRepository::assert_git_repo().await?;
 
         if is_stage_all_flag {
@@ -83,40 +61,56 @@ impl CommitCommand {
                     ))
                     .interact_opt()?;
 
-            if is_stage_all_and_commit_confirmed_by_user.is_some() {
-                self.run(config, true).await?;
-                std::process::exit(1);
-            }
-
-            if staged_files.is_empty() && changed_files.len() > 0 {
+            if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
+                self.run(config, true).await
+            } else if changed_files.len() > 0 {
                 let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
                     .with_prompt("Select the files you want to add to the commit:")
                     .items(&changed_files)
                     .interact_opt()?;
 
-                if selected_items.is_some() {
-                    let files = &selected_items
-                        .unwrap()
+                if let Some(items) = selected_items {
+                    let files = items
                         .iter()
                         .map(|&i| changed_files[i].to_string())
                         .collect::<Vec<_>>();
 
-                        GitRepository::git_add(&files).await?;
+                    GitRepository::git_add(&files).await?;
+                    self.run(config, false).await
+                } else {
+                    Err(anyhow!("No files selected for staging"))
                 }
+            } else {
+                Err(anyhow!("No files selected for staging"))
             }
-            self.run(config, false).await?;
-            std::process::exit(1);
-        }
+        } else {
+            staged_spinner.stop(format!(
+                "{} staged files:\n{}",
+                staged_files.len(),
+                staged_files
+                    .iter()
+                    .map(|file| format!("  {}", file))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
 
-        let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-        let _prompt = Message {
+            let staged_diff = GitRepository::get_staged_diff(&[]).await?;
+
+            self.generate_commit_message_from_git_diff(config, &staged_diff)
+                .await
+        }
+    }
+
+    async fn generate_commit_message_from_git_diff(
+        &self,
+        config: &AutocommitConfig,
+        staged_diff: &str,
+    ) -> Result<String> {
+        let prompt = Message {
             role: MessageRole::User,
             content: get_prompt(config, &staged_diff),
         };
 
-        // let mesage: String = generate_message(&[prompt]).await?;
-        thread::sleep(Duration::from_secs(2));
-        staged_spinner.stop("Done!");
-        Ok(())
+        generate_message(&[prompt]).await
     }
 }

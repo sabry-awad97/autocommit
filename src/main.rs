@@ -11,8 +11,7 @@ use utils::{get_colors, intro, outro};
 #[structopt(
     name = "autocommit",
     version = "1.0.0",
-    about = "A powerful CLI tool that helps you create professional and meaningful commits with ease, using AI to generate impressive commit messages in seconds. Take control of your code history and make it shine with autocommit!",
-    alias = "ac"
+    about = "A powerful CLI tool that helps you create professional and meaningful commits with ease, using AI to generate impressive commit messages in seconds. Take control of your code history and make it shine with autocommit!"
 )]
 struct CLI {
     #[structopt(subcommand)]
@@ -44,7 +43,15 @@ async fn main() {
                 }
             };
             match commit.run(&config, cli.all).await {
-                Ok(_) => (),
+                Ok(commit_message) => {
+                    outro(&format!(
+                        "Commit message:\n\
+                         ——————————————————\n\
+                         {}\n\
+                         ——————————————————",
+                        commit_message
+                    ));
+                }
                 Err(e) => {
                     let err = format!("✖ {}", e);
                     outro(&get_colors().red(&err));
