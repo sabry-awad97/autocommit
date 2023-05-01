@@ -78,12 +78,13 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                let commit_message =
-                    generate::generate_autocommit_message(config, &staged_diff).await?;
-
-                if let Some(remote) = prompt::prompt_for_remote().await? {
-                    if let Ok(true) = prompt::prompt_for_push(&remote) {
-                        push::push_changes(&commit_message, &remote).await?;
+                if let Some(commit_message) =
+                    generate::generate_autocommit_message(config, &staged_diff).await?
+                {
+                    if let Some(remote) = prompt::prompt_for_remote().await? {
+                        if let Ok(true) = prompt::prompt_for_push(&remote) {
+                            push::push_changes(&commit_message, &remote).await?;
+                        }
                     }
                 }
 
