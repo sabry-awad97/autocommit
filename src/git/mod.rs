@@ -173,10 +173,10 @@ impl GitRepository {
 
     pub async fn git_push(remote: &str) -> anyhow::Result<()> {
         let output = Command::new("git")
-            .args(&["push", remote])
+            .args(&["push", "--verbose", remote])
             .output()
             .await
-            .map_err(|e| anyhow!("failed to execute 'git push' command: {}", e))?;
+            .map_err(|e| anyhow!("failed to execute 'git push --verbose' command: {}", e))?;
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -184,5 +184,26 @@ impl GitRepository {
         }
 
         Ok(())
+    }
+
+    pub async fn get_git_remotes() -> anyhow::Result<Vec<String>> {
+        let output = Command::new("git")
+            .arg("remote")
+            .output()
+            .await
+            .map_err(|e| anyhow!("failed to execute 'git remote' command: {}", e))?;
+
+        if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            return Err(anyhow!(error_message));
+        }
+
+        let remotes = String::from_utf8(output.stdout)?
+            .split('\n')
+            .filter(|remote| !remote.trim().is_empty())
+            .map(|remote| remote.to_string())
+            .collect();
+
+        Ok(remotes)
     }
 }

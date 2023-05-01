@@ -141,12 +141,37 @@ impl CommitCommand {
             .interact_opt()?;
 
         if preview_confirmed_by_user.is_some() {
-            let mut commit_spinner = spinner();
-            commit_spinner.start("Committing changes...");
-            GitRepository::git_commit(&commit_message).await?;
-            commit_spinner.stop("Changes committed successfully");
+            self.commit_changes(&commit_message).await?;
+            let push_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt("Do you want to push these changes to the remote repository?")
+                .interact_opt()?;
+
+            if push_confirmed_by_user.is_some() {
+                self.push_changes().await?;
+            }
         }
 
+        Ok(())
+    }
+
+    async fn commit_changes(&self, commit_message: &str) -> Result<()> {
+        let mut commit_spinner = spinner();
+        commit_spinner.start("Committing changes...");
+        GitRepository::git_commit(&commit_message).await?;
+        commit_spinner.stop("✔ Changes committed successfully");
+        Ok(())
+    }
+
+    async fn push_changes(&self) -> Result<()> {
+        let mut push_spinner = spinner();
+        push_spinner.start("Pushing changes to remote repository...");
+        let remotes = GitRepository::get_git_remotes().await?;
+        push_spinner.set_message(format!("Running `git push {}`", remotes[0]));
+        GitRepository::git_push(&remotes[0]).await?;
+        push_spinner.stop(format!(
+            "✔ Changes pushed to remote repository {}",
+            remotes[0]
+        ));
         Ok(())
     }
 }
