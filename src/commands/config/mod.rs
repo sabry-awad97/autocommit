@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 use crate::i18n::language::Language;
+use crate::utils::outro;
 
 // This enum represents the configuration keys
 #[derive(Debug, PartialEq)]
@@ -203,7 +204,7 @@ impl ConfigCommand {
                     return Err(error);
                 }
 
-                println!("{}", "Config successfully set".green());
+                outro(&"Config successfully set".green());
             }
         }
 
