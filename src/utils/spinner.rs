@@ -206,12 +206,8 @@ impl Spinner {
             g: 128,
             b: 128,
         });
-        
-        let s_step_submit = get_unicode_string("◇", "o").color(Color::TrueColor {
-            r: 128,
-            g: 128,
-            b: 128,
-        });
+
+        let s_step_submit = get_unicode_string("◇", "o").green();
 
         println!("\n{}", s_bar);
         println!("{} {}", s_step_submit, message.into());
