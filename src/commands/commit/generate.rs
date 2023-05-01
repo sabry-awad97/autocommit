@@ -1,6 +1,6 @@
+use std::io;
 use std::io::Write;
 use std::time::Duration;
-use std::{io, thread};
 
 use colored::{Color, Colorize};
 
