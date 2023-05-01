@@ -1,3 +1,4 @@
+use colored::Colorize;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 
@@ -10,7 +11,7 @@ use super::chat_context::ChatContext;
 pub async fn generate_autocommit_message(
     config: &AutocommitConfig,
     staged_diff: &str,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Option<String>> {
     let mut commit_spinner = spinner();
     commit_spinner.start("Generating the commit message");
 
@@ -36,10 +37,10 @@ pub async fn generate_autocommit_message(
         let mut commit_spinner = spinner();
         commit_spinner.start("Committing changes...");
         GitRepository::git_commit(&commit_message).await?;
-        commit_spinner.stop("✔ Changes committed successfully");
-        Ok(commit_message)
+        commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
+        Ok(Some(commit_message))
     } else {
         outro("Commit cancelled, exiting...");
-        Ok("".to_string())
+        Ok(None)
     }
 }
