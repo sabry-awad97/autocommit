@@ -153,4 +153,6 @@ lazy_static! {
     pub static ref CHROMA: Chroma = Chroma::new();
 }
 
-pub use CHROMA as Colors;
+pub fn get_colors() -> &'static Chroma {
+    &CHROMA
+}

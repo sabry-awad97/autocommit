@@ -2,10 +2,11 @@ use std::{thread, time::Duration};
 
 use crate::utils::{
     assert_git_repo, generate_message, get_changed_files, get_staged_diff, get_staged_files,
-    git_add, spinner, Message, MessageRole,
+    get_unicode_string, git_add, spinner, get_colors, Message, MessageRole,
 };
 
 use anyhow::{anyhow, Result};
+use dialoguer::Confirm;
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -45,15 +46,22 @@ impl CommitCommand {
             ));
         }
 
-        let mut staged_spinner = spinner("Counting staged files");
-        staged_spinner
-            .start()
-            .map_err(|_| anyhow!("Error starting spinner"))?;
-
+        let mut staged_spinner = spinner();
+        staged_spinner.start("Counting staged files");
+        thread::sleep(Duration::from_secs(2));
         if staged_files.is_empty() {
-            staged_spinner
-                .stop()
-                .map_err(|_| anyhow!("Error stopping spinner"))?;
+            staged_spinner.stop("No files are staged");
+
+            let s_bar = get_unicode_string("│", "|");
+            let message = format!(
+                "{} {}",
+                get_colors().gray(s_bar),
+                "Do you want to stage all files and generate commit message?"
+            );
+            let is_stage_all_and_commit_confirmed_by_user =
+                Confirm::new().with_prompt(message).interact()?;
+
+            println!("{}", is_stage_all_and_commit_confirmed_by_user);
         }
 
         let staged_diff = get_staged_diff(&[]).await?;

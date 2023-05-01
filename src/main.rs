@@ -4,7 +4,7 @@ mod commands;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::{intro, outro, Colors};
+use utils::{get_colors, intro, outro};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -46,7 +46,7 @@ async fn main() {
                 Ok(_) => (),
                 Err(e) => {
                     let err = format!("✖ {}", e);
-                    outro(&Colors.red(&err));
+                    outro(&get_colors().red(&err));
                 }
             }
         }
