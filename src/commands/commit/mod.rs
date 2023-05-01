@@ -34,6 +34,30 @@ impl CommitCommand {
         Ok(())
     }
 
+    async fn stage_selected_files(&self, changed_files: &[String]) -> Result<()> {
+        let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
+            .with_prompt("Select the files you want to add to the commit:")
+            .items(&changed_files)
+            .interact_opt()?;
+
+        if let Some(items) = selected_items {
+            if items.is_empty() {
+                return Err(anyhow!("Please select at least one option with space"));
+            }
+
+            let files = items
+                .iter()
+                .map(|&i| changed_files[i].to_string())
+                .collect::<Vec<_>>();
+
+            GitRepository::git_add(&files).await?;
+        } else {
+            return Err(anyhow!("No files selected for staging"));
+        }
+
+        Ok(())
+    }
+
     pub async fn run(&self, config: &AutocommitConfig, mut is_stage_all_flag: bool) -> Result<()> {
         GitRepository::assert_git_repo().await?;
 
@@ -69,27 +93,9 @@ impl CommitCommand {
                     is_stage_all_flag = true;
                     continue;
                 } else if changed_files.len() > 0 {
-                    let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
-                        .with_prompt("Select the files you want to add to the commit:")
-                        .items(&changed_files)
-                        .interact_opt()?;
-
-                    if let Some(items) = selected_items {
-                        if items.is_empty() {
-                            return Err(anyhow!("Please select at least one option with space"));
-                        }
-
-                        let files = items
-                            .iter()
-                            .map(|&i| changed_files[i].to_string())
-                            .collect::<Vec<_>>();
-
-                        GitRepository::git_add(&files).await?;
-                        is_stage_all_flag = false;
-                        continue;
-                    } else {
-                        return Err(anyhow!("No files selected for staging"));
-                    }
+                    self.stage_selected_files(&changed_files).await?;
+                    is_stage_all_flag = false;
+                    continue;
                 } else {
                     return Err(anyhow!("No files selected for staging"));
                 }
