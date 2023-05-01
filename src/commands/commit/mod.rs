@@ -22,6 +22,8 @@ pub struct CommitCommand {
     branch_name: Option<String>,
     #[structopt(long)]
     skip_chatbot: bool,
+    #[structopt(long)]
+    auto_push: bool,
 }
 
 impl CommitCommand {
@@ -116,7 +118,8 @@ impl CommitCommand {
                 {
                     self.commit_changes(&new_message).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
-                        if let Ok(true) = Self::prompt_for_push(&remote) {
+                        if Self::prompt_for_push(&remote, config).unwrap_or(false) || self.auto_push
+                        {
                             Self::pull_changes(&remote).await?;
                             Self::push_changes(&new_message, &remote, self.branch_name.clone())
                                 .await?;
@@ -334,16 +337,35 @@ impl CommitCommand {
         }
     }
 
-    pub fn prompt_for_push(remote: &str) -> anyhow::Result<bool> {
-        let push_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!(
-                "Do you want to push these changes to the remote repository {}?",
-                remote
-            ))
-            .default(true)
-            .interact_opt()?;
+    pub fn prompt_for_push(remote: &str, config: &AutocommitConfig) -> anyhow::Result<bool> {
+        let push_confirmed_by_user = match &config.config_data.default_push_behavior {
+            Some(default_push_behavior) => {
+                outro(&format!(
+                    "Using default push behavior: {}\n",
+                    default_push_behavior
+                ));
+                match default_push_behavior.as_str() {
+                    "yes" => true,
+                    "no" => false,
+                    _ => {
+                        return Err(anyhow!(
+                            "Invalid default push behavior: {}",
+                            default_push_behavior
+                        ))
+                    }
+                }
+            }
+            _ => Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!(
+                    "Do you want to push these changes to the remote repository {}?",
+                    remote
+                ))
+                .default(true)
+                .interact_opt()?
+                .unwrap_or(true),
+        };
 
-        if let Some(true) = push_confirmed_by_user {
+        if push_confirmed_by_user {
             outro(&format!("Changes pushed to remote repository {}", remote));
             Ok(true)
         } else {
