@@ -21,6 +21,19 @@ fn get_prompt(config: &AutocommitConfig, diff: &str) -> String {
 }
 
 impl CommitCommand {
+
+    async fn stage_all_files(&self) -> Result<()> {
+        let changed_files = GitRepository::get_changed_files().await?;
+    
+        if !changed_files.is_empty() {
+            GitRepository::git_add(&changed_files).await?;
+        } else {
+            return Err(anyhow!("No changes detected, write some code and run again"));
+        }
+    
+        Ok(())
+    }
+
     pub async fn run(
         &self,
         config: &AutocommitConfig,
@@ -30,15 +43,7 @@ impl CommitCommand {
 
         loop {
             if is_stage_all_flag {
-                let changed_files = GitRepository::get_changed_files().await?;
-
-                if !changed_files.is_empty() {
-                    GitRepository::git_add(&changed_files).await?;
-                } else {
-                    return Err(anyhow!(
-                        "No changes detected, write some code and run again"
-                    ));
-                }
+                self.stage_all_files().await?;
             }
 
             let staged_files = GitRepository::get_staged_files().await?;
