@@ -38,6 +38,7 @@ impl ChatContext {
             system_message.push("Be specific and concise in the commit message summary, highlighting the most important change(s).");
             system_message.push("Provide more detailed explanation in the commit description, including any relevant context or reasoning behind the change.");
             system_message.push("Don't start it with 'This commit', just describe the changes.");
+            system_message.push("Lines must not be longer than 74 characters.");
         } else {
             system_message.push("Don't add any descriptions to the commit, only commit message.")
         }
@@ -53,20 +54,19 @@ impl ChatContext {
         system_message.push(
             "Use active voice and start with the type of change, such as fix, feat, refactor, etc.",
         );
-        system_message.push("Lines must not be longer than 74 characters.");
 
         let lang = format!("Use {} to answer.", translation.language);
         system_message.push(&lang);
         system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
 
-        system_message.push("Include a 'Signed-off-by' line indicating the author of the commit.");
+        system_message.push("Include a 'Signed-off-by: [author-name] <[author-email]>' line indicating the author of the commit.");
 
         let name = format!(
-            "The [author-name] of the author is {}",
+            "The [author-name]  is {}",
             config.config_data.name
         );
         let email = format!(
-            "The [author-email] of the author is {}",
+            "The [author-email] is {}",
             config.config_data.email
         );
         system_message.push(&name);
