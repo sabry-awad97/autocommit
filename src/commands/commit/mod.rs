@@ -100,7 +100,7 @@ impl CommitCommand {
                 if let Ok(Some(new_message)) =
                     prompt::prompt_to_commit_changes(config, &staged_diff, &commit_message).await
                 {
-                    generate::commit_changes(&new_message).await?;
+                    Self::commit_changes(&new_message).await?;
                     if let Some(remote) = prompt::prompt_for_remote().await? {
                         if let Ok(true) = prompt::prompt_for_push(&remote) {
                             Self::push_changes(&new_message, &remote).await?;
@@ -118,6 +118,16 @@ impl CommitCommand {
                 is_stage_all_flag = false;
             }
         }
+    }
+
+    pub async fn commit_changes(commit_message: &str) -> anyhow::Result<()> {
+        const COMMITTING_CHANGES: &str = "Committing changes...";
+
+        let mut commit_spinner = spinner();
+        commit_spinner.start(COMMITTING_CHANGES);
+        GitRepository::git_commit(&commit_message).await?;
+        commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
+        Ok(())
     }
 
     pub async fn push_changes(_commit_message: &str, remote: &str) -> anyhow::Result<()> {

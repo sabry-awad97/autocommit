@@ -1,13 +1,11 @@
 use colored::{Color, Colorize};
 
 use crate::commands::config::AutocommitConfig;
-use crate::git::GitRepository;
 use crate::utils::{outro, spinner, MessageRole};
 
 use super::chat_context::ChatContext;
 
 const GENERATING_MESSAGE: &str = "Generating the commit message";
-const COMMITTING_CHANGES: &str = "Committing changes...";
 
 pub async fn generate_autocommit_message(
     config: &AutocommitConfig,
@@ -39,10 +37,3 @@ pub async fn generate_autocommit_message(
     Ok(commit_message)
 }
 
-pub async fn commit_changes(commit_message: &str) -> anyhow::Result<()> {
-    let mut commit_spinner = spinner();
-    commit_spinner.start(COMMITTING_CHANGES);
-    GitRepository::git_commit(&commit_message).await?;
-    commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
-    Ok(())
-}
