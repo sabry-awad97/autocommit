@@ -183,7 +183,7 @@ impl CommitCommand {
                     .default(false)
                     .interact()?;
             if is_generate_new_message_confirmed_by_user {
-                let mut new_content = String::from("Suggest a professional git commit message\n");
+                let mut new_content = String::from("Suggest a professional git commit message with gitmoji\n");
                 new_content.push_str(&staged_diff);
                 message = Self::generate_autocommit_message(config, &new_content).await?;
             } else {
