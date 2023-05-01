@@ -61,16 +61,10 @@ impl ChatContext {
 
         system_message.push("Include a 'Signed-off-by: [author-name] <[author-email]>' line indicating the author of the commit.");
 
-        let name = format!(
-            "The [author-name]  is {}",
-            config.config_data.name
-        );
-        let email = format!(
-            "The [author-email] is {}",
-            config.config_data.email
-        );
-        system_message.push(&name);
-        system_message.push(&email);
+        let author_name = format!("The [author-name]  is {}", &config.config_data.name);
+        let author_email = format!("The [author-email] is {}", &config.config_data.email);
+        system_message.push(&author_name);
+        system_message.push(&author_email);
 
         let mut assistant_message = String::new();
         if config_data.emoji_enabled {
@@ -81,6 +75,11 @@ impl ChatContext {
             assistant_message.push_str(&translation.commit_description);
         }
 
+        let author_line = format!(
+            "Signed-off-by: {} <{}>",
+            &config.config_data.name, &config.config_data.email
+        );
+        assistant_message.push_str(&author_line);
         let mut context = ChatContext { messages: vec![] };
         context.add_message(MessageRole::System, system_message.join("\n\n"));
         context.add_message(MessageRole::User, INITIAL_DIFF.to_owned());
@@ -89,8 +88,10 @@ impl ChatContext {
         context
     }
 
-    pub async fn generate_message(self) -> anyhow::Result<String> {
-        generate_message(self.get_messages()).await
+    pub async fn generate_message(&mut self) -> anyhow::Result<String> {
+        let commit_message = generate_message(self.get_messages()).await?;
+        self.add_message(MessageRole::Assistant, commit_message.to_owned());
+        Ok(commit_message)
     }
 }
 
