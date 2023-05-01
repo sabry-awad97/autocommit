@@ -1,5 +1,5 @@
 use colored::Colorize;
-use dialoguer::{theme::ColorfulTheme, Confirm, Editor, MultiSelect};
+use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 
 use crate::{commands::config::AutocommitConfig, git::GitRepository, utils::outro};
 use anyhow::anyhow;
@@ -21,21 +21,6 @@ pub async fn prompt_to_commit_changes(
     let mut message = commit_message.to_string();
 
     loop {
-        let edit_message = Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt("Do you want to edit the commit message?")
-            .interact()?;
-
-        if !edit_message {
-            break;
-        }
-
-        let editor = Editor::new();
-
-        if let Some(new_message) = editor.edit(&message)? {
-            message = new_message.trim().to_string();
-            break;
-        }
-
         let is_generate_new_message_confirmed_by_user =
             Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt(format!(
@@ -44,7 +29,6 @@ pub async fn prompt_to_commit_changes(
                 ))
                 .interact()?;
         if is_generate_new_message_confirmed_by_user {
-            // let new_content = prompt::prompt_for_new_message().await?;
             let mut new_content = String::from("Suggest a professional git commit message\n");
             new_content.push_str(&staged_diff);
             message = generate::generate_autocommit_message(config, &new_content).await?;
@@ -52,7 +36,7 @@ pub async fn prompt_to_commit_changes(
             break;
         }
     }
-    
+
     let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(format!("Do you want to commit these changes?"))
         .interact_opt()?;
