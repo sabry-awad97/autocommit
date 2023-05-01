@@ -17,6 +17,7 @@ pub async fn generate_autocommit_message(
     chat_context.add_message(MessageRole::User, content.to_owned());
 
     let commit_message = chat_context.generate_message().await?;
+    commit_spinner.stop("📝 Commit message generated successfully");
 
     outro(&format!(
         "Commit message:\n\
@@ -25,8 +26,6 @@ pub async fn generate_autocommit_message(
         ——————————————————",
         commit_message
     ));
-
-    commit_spinner.stop("📝 Commit message generated successfully");
     Ok(commit_message)
 }
 
