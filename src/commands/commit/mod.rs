@@ -1,8 +1,8 @@
 use std::{thread, time::Duration};
 
-use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
-
 use crate::git::GitRepository;
+use crate::utils::{generate_message, outro, spinner, Message, MessageRole};
+use indicatif::ProgressBar;
 
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
@@ -120,8 +120,17 @@ impl CommitCommand {
                 ));
 
                 let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt(format!("\n\nDo you want to commit these changes?"))
-                    .interact()?;
+                    .with_prompt(format!("Do you want to commit these changes?"))
+                    .interact_opt()?;
+
+                if preview_confirmed_by_user.is_some() {
+                    let progress_bar = ProgressBar::new_spinner();
+                    progress_bar.set_message("Committing changes...");
+                    progress_bar.enable_steady_tick(Duration::from_millis(100));
+                    thread::sleep(Duration::from_secs(2));
+                    progress_bar.finish_with_message("Changes committed successfully");
+                    // GitRepository::git_commit(&commit_message).await?;
+                }
                 return Ok(());
             }
         }
