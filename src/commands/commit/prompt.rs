@@ -27,6 +27,7 @@ pub async fn prompt_to_commit_changes(
                     "{}",
                     "Do you want to generate a new commit message?"
                 ))
+                .default(false)
                 .interact()?;
         if is_generate_new_message_confirmed_by_user {
             let mut new_content = String::from("Suggest a professional git commit message\n");
@@ -39,6 +40,7 @@ pub async fn prompt_to_commit_changes(
 
     let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(format!("Do you want to commit these changes?"))
+        .default(true)
         .interact_opt()?;
 
     if let Some(true) = preview_confirmed_by_user {
@@ -109,6 +111,7 @@ pub fn prompt_for_push(remote: &str) -> anyhow::Result<bool> {
             "Do you want to push these changes to the remote repository {}?",
             remote
         ))
+        .default(true)
         .interact_opt()?;
 
     if let Some(true) = push_confirmed_by_user {

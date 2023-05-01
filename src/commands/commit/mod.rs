@@ -55,6 +55,7 @@ impl CommitCommand {
                             "{}",
                             "Do you want to stage all files and generate commit message?"
                         ))
+                        .default(false)
                         .interact_opt()?;
 
                 if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
