@@ -23,7 +23,7 @@ pub struct CommitCommand {
     #[structopt(long)]
     skip_chatbot: bool,
     #[structopt(long)]
-    auto_push: bool,
+    skip_push_confirmation: bool,
 }
 
 impl CommitCommand {
@@ -118,7 +118,7 @@ impl CommitCommand {
                 {
                     self.commit_changes(&new_message).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
-                        if Self::prompt_for_push(&remote, config).unwrap_or(false) || self.auto_push
+                        if Self::prompt_for_push(&remote, config).unwrap_or(false) || self.skip_push_confirmation
                         {
                             Self::pull_changes(&remote).await?;
                             Self::push_changes(&new_message, &remote, self.branch_name.clone())
