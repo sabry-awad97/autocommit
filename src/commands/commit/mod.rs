@@ -4,7 +4,7 @@ use crate::{
     git::GitRepository,
     utils::{outro, spinner},
 };
-
+use anyhow::anyhow;
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use log::info;
@@ -16,12 +16,25 @@ mod chat_context;
 mod generate;
 mod prompt;
 mod push;
-mod stage;
 
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
 
 impl CommitCommand {
+    pub async fn stage_all_changed_files() -> anyhow::Result<()> {
+        let changed_files = GitRepository::get_changed_files().await?;
+
+        if !changed_files.is_empty() {
+            GitRepository::git_add(&changed_files).await?;
+        } else {
+            return Err(anyhow!(
+                "No changes detected, write some code and run again"
+            ));
+        }
+
+        Ok(())
+    }
+
     pub async fn run(
         &self,
         config: &AutocommitConfig,
@@ -32,7 +45,7 @@ impl CommitCommand {
 
         loop {
             if is_stage_all_flag {
-                stage::stage_all_changed_files().await?;
+                Self::stage_all_changed_files().await?;
             }
 
             let staged_files = GitRepository::get_staged_files().await?;
