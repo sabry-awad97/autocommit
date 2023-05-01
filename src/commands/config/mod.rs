@@ -18,6 +18,7 @@ enum ConfigKey {
     Language,
     Name,
     Email,
+    DefaultCommitMessage,
 }
 
 impl ConfigKey {
@@ -28,6 +29,7 @@ impl ConfigKey {
             "language" => Some(ConfigKey::Language),
             "name" => Some(ConfigKey::Name),
             "email" => Some(ConfigKey::Email),
+            "commit_message" => Some(ConfigKey::DefaultCommitMessage),
             _ => None,
         }
     }
@@ -47,8 +49,17 @@ pub struct ConfigData {
     pub language: Language,
     pub name: String,
     pub email: String,
+    pub default_commit_message: Option<String>,
 }
 
+const POSSIBLE_VALUES: &[&str; 6] = &[
+    "description",
+    "emoji",
+    "language",
+    "name",
+    "email",
+    "commit_message",
+];
 impl AutocommitConfig {
     fn new() -> anyhow::Result<Self> {
         let name = GitRepository::get_git_name()?;
@@ -60,6 +71,7 @@ impl AutocommitConfig {
                 language: Language::English,
                 name,
                 email,
+                default_commit_message: None,
             },
         })
     }
@@ -126,7 +138,7 @@ impl AutocommitConfig {
 pub enum ConfigCommand {
     #[structopt(name = "get")]
     Get {
-        #[structopt(name = "keys", possible_values = &["description", "emoji", "language"])]
+        #[structopt(name = "keys", possible_values = POSSIBLE_VALUES)]
         keys: Vec<String>,
 
         #[structopt(short, long, parse(from_os_str))]

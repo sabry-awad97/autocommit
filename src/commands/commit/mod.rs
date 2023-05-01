@@ -20,10 +20,6 @@ pub struct CommitCommand {
     stage_all: bool,
     #[structopt(short, long)]
     branch_name: Option<String>,
-
-    #[structopt(short, long)]
-    default_commit_message: Option<String>,
-
     #[structopt(long)]
     skip_chatbot: bool,
 }
@@ -100,7 +96,7 @@ impl CommitCommand {
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
 
                 let commit_message = if self.skip_chatbot {
-                    if let Some(default_message) = &self.default_commit_message {
+                    if let Some(default_message) = &config.config_data.default_commit_message {
                         outro(&format!(
                             "Using default commit message:\n{}\n",
                             default_message
@@ -219,7 +215,7 @@ impl CommitCommand {
 
         if let Some(true) = preview_confirmed_by_user {
             Ok(Some(message))
-        } else if let Some(default_message) = &self.default_commit_message {
+        } else if let Some(default_message) = &config.config_data.default_commit_message {
             outro(&format!(
                 "Using default commit message:\n{}\n",
                 default_message
@@ -243,15 +239,17 @@ impl CommitCommand {
         let mut chat_context = ChatContext::get_initial_context(config);
         chat_context.add_message(MessageRole::User, content.to_owned());
 
-        let commit_message = if let Some(default_message) = &self.default_commit_message {
-            outro(&format!(
-                "Using default commit message:\n{}\n",
-                default_message
-            ));
-            default_message.clone()
-        } else {
-            chat_context.generate_message().await?
+        let commit_message = match &config.config_data.default_commit_message {
+            Some(default_message) => {
+                outro(&format!(
+                    "Using default commit message:\n{}\n",
+                    default_message
+                ));
+                default_message.clone()
+            }
+            _ => chat_context.generate_message().await?,
         };
+
         commit_spinner.stop("📝 Commit message generated successfully");
 
         let separator_length = 40;
