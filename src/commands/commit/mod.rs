@@ -52,7 +52,7 @@ impl CommitCommand {
 
             let mut staged_spinner = spinner();
             staged_spinner.start("Counting staged files");
-            thread::sleep(Duration::from_secs(2));
+            thread::sleep(Duration::from_secs(1));
             if staged_files.is_empty() {
                 staged_spinner.stop("No files are staged");
 
@@ -74,6 +74,10 @@ impl CommitCommand {
                         .interact_opt()?;
 
                     if let Some(items) = selected_items {
+                        if items.is_empty() {
+                            return Err(anyhow!("Please select at least one option with space"));
+                        }
+
                         let files = items
                             .iter()
                             .map(|&i| changed_files[i].to_string())
