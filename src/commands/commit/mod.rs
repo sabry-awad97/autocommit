@@ -34,9 +34,12 @@ impl CommitCommand {
         Ok(())
     }
 
-    async fn stage_selected_files(&self, changed_files: &[String]) -> Result<()> {
+    async fn prompt_for_selected_files(&self, changed_files: &[String]) -> Result<Vec<String>> {
         let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
-            .with_prompt("Select the files you want to add to the commit:")
+            .with_prompt(format!(
+                "Select the files you want to add to the commit ({} files changed):",
+                changed_files.len()
+            ))
             .items(&changed_files)
             .interact_opt()?;
 
@@ -50,12 +53,10 @@ impl CommitCommand {
                 .map(|&i| changed_files[i].to_string())
                 .collect::<Vec<_>>();
 
-            GitRepository::git_add(&files).await?;
+            Ok(files)
         } else {
             return Err(anyhow!("No files selected for staging"));
         }
-
-        Ok(())
     }
 
     pub async fn run(&self, config: &AutocommitConfig, mut is_stage_all_flag: bool) -> Result<()> {
@@ -93,7 +94,8 @@ impl CommitCommand {
                     is_stage_all_flag = true;
                     continue;
                 } else if changed_files.len() > 0 {
-                    self.stage_selected_files(&changed_files).await?;
+                    let files = self.prompt_for_selected_files(&changed_files).await?;
+                    GitRepository::git_add(&files).await?;
                     is_stage_all_flag = false;
                     continue;
                 } else {
@@ -111,9 +113,7 @@ impl CommitCommand {
                 ));
 
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
-                return self
-                    .generate_autocommit_message(config, &staged_diff)
-                    .await;
+                return self.generate_autocommit_message(config, &staged_diff).await;
             }
         }
     }
