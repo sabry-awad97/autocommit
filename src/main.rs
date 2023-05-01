@@ -1,6 +1,7 @@
 use structopt::StructOpt;
 
 mod commands;
+mod git;
 mod utils;
 
 use commands::{get_config, Command};
