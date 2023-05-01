@@ -9,6 +9,11 @@ use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
 
+mod generate;
+mod prompt;
+mod push;
+mod stage;
+
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
 
@@ -20,19 +25,7 @@ fn get_chat_context(config: &AutocommitConfig, diff: &str) -> String {
 }
 
 impl CommitCommand {
-    async fn stage_all_changed_files(&self) -> Result<()> {
-        let changed_files = GitRepository::get_changed_files().await?;
-
-        if !changed_files.is_empty() {
-            GitRepository::git_add(&changed_files).await?;
-        } else {
-            return Err(anyhow!(
-                "No changes detected, write some code and run again"
-            ));
-        }
-
-        Ok(())
-    }
+    
 
     async fn prompt_for_selected_files(&self, changed_files: &[String]) -> Result<Vec<String>> {
         let selected_items = MultiSelect::with_theme(&ColorfulTheme::default())
@@ -64,7 +57,7 @@ impl CommitCommand {
 
         loop {
             if is_stage_all_flag {
-                self.stage_all_changed_files().await?;
+                stage::stage_all_changed_files().await?;
             }
 
             let staged_files = GitRepository::get_staged_files().await?;
