@@ -15,7 +15,6 @@ use super::config::AutocommitConfig;
 mod chat_context;
 mod generate;
 mod prompt;
-mod push;
 
 #[derive(Debug, StructOpt)]
 pub struct CommitCommand {}
@@ -104,7 +103,7 @@ impl CommitCommand {
                     generate::commit_changes(&new_message).await?;
                     if let Some(remote) = prompt::prompt_for_remote().await? {
                         if let Ok(true) = prompt::prompt_for_push(&remote) {
-                            push::push_changes(&new_message, &remote).await?;
+                            Self::push_changes(&new_message, &remote).await?;
                             info!("Autocommit process completed successfully");
                         }
                     }
@@ -119,5 +118,20 @@ impl CommitCommand {
                 is_stage_all_flag = false;
             }
         }
+    }
+
+    pub async fn push_changes(_commit_message: &str, remote: &str) -> anyhow::Result<()> {
+        let mut push_spinner = spinner();
+        push_spinner.start(format!(
+            "Pushing changes to remote repository {}...",
+            remote.green().bold()
+        ));
+        GitRepository::git_push(&remote).await?;
+        push_spinner.stop(format!(
+            "{} Changes pushed successfully to remote repository {}.",
+            "✔".green(),
+            remote.green().bold()
+        ));
+        Ok(())
     }
 }
