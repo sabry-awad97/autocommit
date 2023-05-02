@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -105,8 +106,18 @@ impl AutocommitConfig {
             return Err(anyhow!("Config file is empty: {}", path.display()));
         }
 
-        toml::from_str(&contents)
-            .with_context(|| format!("Failed to parse config file: {}", path.display()))
+        let mut config: AutocommitConfig = toml::from_str(&contents)
+            .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+
+        if let Ok(value) = env::var("AUTOCOMMIT_NAME") {
+            config.update_config(&ConfigKey::Name, &value)?;
+        }
+
+        if let Ok(value) = env::var("AUTOCOMMIT_EMAIL") {
+            config.update_config(&ConfigKey::Email, &value)?;
+        }
+
+        Ok(config)
     }
 
     // This function writes the configuration to a file
@@ -243,6 +254,11 @@ pub enum ConfigCommand {
     },
     #[structopt(name = "reset")]
     Reset,
+    #[structopt(name = "env")]
+    Env {
+        #[structopt(short, long)]
+        shell: Option<String>,
+    },
 }
 
 impl ConfigCommand {
@@ -297,6 +313,34 @@ impl ConfigCommand {
                 config.to_file(&self.get_config_path())?;
                 outro(&format!("{} Config successfully reset", "✔".green()));
             }
+            ConfigCommand::Env { shell } => {
+                let config = self.get_config()?;
+                let config_values =
+                    config.get_config_values(&ConfigKey::iter().collect::<Vec<_>>());
+                
+                match shell.as_deref() {
+                    Some("bash") => {
+                        for (key, value) in config_values {
+                            println!("export AUTOCOMMIT_{}={}", key.to_uppercase(), value);
+                        }
+                    }
+                    Some("fish") => {
+                        for (key, value) in config_values {
+                            println!("set -gx AUTOCOMMIT_{} {}", key.to_uppercase(), value);
+                        }
+                    }
+                    Some("powershell") => {
+                        for (key, value) in config_values {
+                            println!("$env:AUTOCOMMIT_{} = '{}'", key.to_uppercase(), value);
+                        }
+                    }
+                    _ => {
+                        for (key, value) in config_values {
+                            println!("{}={}", key.to_uppercase(), value);
+                        }
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -306,7 +350,7 @@ impl ConfigCommand {
         match self {
             ConfigCommand::Get { config_path, .. } => config_path.clone(),
             ConfigCommand::Set { config_path, .. } => config_path.clone(),
-            ConfigCommand::Reset => None,
+            _ => None,
         }
         .unwrap_or_else(|| {
             let mut path = dirs::home_dir().unwrap_or_default();
