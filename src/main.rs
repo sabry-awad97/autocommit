@@ -7,7 +7,8 @@ mod i18n;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::{init_logger, intro, outro};
+use log::{error, info};
+use utils::{intro, outro};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -22,7 +23,7 @@ struct CLI {
 
 #[tokio::main]
 async fn main() {
-    init_logger("info");
+    // init_logger("info");
     intro("Autocommit");
 
     let cli = CLI::from_args();
@@ -31,6 +32,7 @@ async fn main() {
         Command::ConfigCommand(config) => match config.run() {
             Ok(_) => (),
             Err(e) => {
+                error!("{}", e);
                 outro(&format!("{} {}", "✖".red(), e));
             }
         },
@@ -38,6 +40,7 @@ async fn main() {
             let config = match get_config() {
                 Ok(c) => c,
                 Err(e) => {
+                    error!("{}", e);
                     let message = &format!("{} {}", "✖".red(), e);
                     let separator_length = 80;
                     let separator = "—".repeat(separator_length).red().bold();
@@ -54,6 +57,7 @@ async fn main() {
             match commit.run(&config).await {
                 Ok(_) => (),
                 Err(e) => {
+                    error!("{}", e);
                     let message = &format!("{} {}", "✖".red(), e);
                     let separator_length = 80;
                     let separator = "—".repeat(separator_length).red().bold();
@@ -65,4 +69,6 @@ async fn main() {
             }
         }
     }
+
+    info!("Autocommit finished successfully");
 }
