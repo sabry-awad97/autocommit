@@ -219,7 +219,7 @@ impl Generator {
     async fn generate(&mut self, prompt: &[Message]) -> anyhow::Result<String> {
         let response = self
             .openai
-            .create_chat_completion(OAIModel::GPT4, prompt, 196)
+            .create_chat_completion(OAIModel::GPT3Turbo, prompt, 196)
             .await?;
 
         let result = response
