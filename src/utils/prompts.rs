@@ -6,7 +6,7 @@ pub fn outro(message: &str) {
     let s_bar = get_unicode_string("│", "|");
     let s_bar_end = get_unicode_string("└", "—");
     println!(
-        "{}\n{} {}\n",
+        "{}\n{} {}",
         s_bar.color(Color::TrueColor {
             r: 128,
             g: 128,
