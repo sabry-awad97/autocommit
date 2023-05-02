@@ -276,7 +276,7 @@ pub enum ConfigCommand {
 
 impl ConfigCommand {
     fn get_config(&self) -> Result<AutocommitConfig> {
-        let config = AutocommitConfig::from_file_or_new(&self.get_config_path())?;
+        let config = AutocommitConfig::from_file_or_new(&self.get_config_path()?)?;
         Ok(config)
     }
 
@@ -318,12 +318,12 @@ impl ConfigCommand {
                     config.update_config(&config_key, value)?;
                 }
 
-                config.to_file(&self.get_config_path())?;
+                config.to_file(&self.get_config_path()?)?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
             ConfigCommand::Reset => {
                 let config = AutocommitConfig::new()?;
-                config.to_file(&self.get_config_path())?;
+                config.to_file(&self.get_config_path()?)?;
                 outro(&format!("{} Config successfully reset", "✔".green()));
             }
             ConfigCommand::Env { shell } => {
@@ -359,14 +359,19 @@ impl ConfigCommand {
         Ok(())
     }
 
-    fn get_config_path(&self) -> PathBuf {
-        match self {
+    fn get_config_path(&self) -> anyhow::Result<PathBuf> {
+        let config_path = match self {
             ConfigCommand::Get { config_path, .. } => config_path.clone(),
             ConfigCommand::Set { config_path, .. } => config_path.clone(),
             _ => None,
-        }
-        .unwrap_or_else(|| {
-            let mut path = dirs::home_dir().unwrap_or_default();
+        };
+        config_path
+            .map(Ok)
+            .unwrap_or_else(|| Self::default_config_path().ok_or_else(|| anyhow!("Could not determine default config path")))
+    }
+    
+    fn default_config_path() -> Option<PathBuf> {
+        dirs::home_dir().map(|mut path| {
             path.push(".autocommit");
             path
         })
