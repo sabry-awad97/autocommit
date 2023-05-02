@@ -42,12 +42,13 @@ pub struct AutocommitConfig {
 #[derive(Debug, Display, EnumString, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[serde(rename_all = "lowercase")]
-pub enum YesNo {
+pub enum DefaultBehavior {
     Yes,
     No,
+    Ask,
 }
 
-impl Default for YesNo {
+impl Default for DefaultBehavior {
     fn default() -> Self {
         Self::No
     }
@@ -56,14 +57,16 @@ impl Default for YesNo {
 // This struct represents the configuration data
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ConfigData {
+    #[serde(rename = "description")]
     pub description_enabled: bool,
+    #[serde(rename = "emoji")]
     pub emoji_enabled: bool,
     pub language: Language,
     pub name: String,
     pub email: String,
     pub default_commit_message: Option<String>,
-    pub default_push_behavior: Option<YesNo>,
-    pub default_commit_behavior: Option<YesNo>,
+    pub default_push_behavior: Option<DefaultBehavior>,
+    pub default_commit_behavior: Option<DefaultBehavior>,
 }
 
 const POSSIBLE_VALUES: &[&str; 7] = &[
@@ -365,11 +368,12 @@ impl ConfigCommand {
             ConfigCommand::Set { config_path, .. } => config_path.clone(),
             _ => None,
         };
-        config_path
-            .map(Ok)
-            .unwrap_or_else(|| Self::default_config_path().ok_or_else(|| anyhow!("Could not determine default config path")))
+        config_path.map(Ok).unwrap_or_else(|| {
+            Self::default_config_path()
+                .ok_or_else(|| anyhow!("Could not determine default config path"))
+        })
     }
-    
+
     fn default_config_path() -> Option<PathBuf> {
         dirs::home_dir().map(|mut path| {
             path.push(".autocommit");
