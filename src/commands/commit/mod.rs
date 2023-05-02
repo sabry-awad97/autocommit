@@ -10,7 +10,7 @@ use log::info;
 use std::time::Duration;
 use structopt::StructOpt;
 
-use super::config::{AutocommitConfig, DefaultBehavior};
+use super::config::AutocommitConfig;
 
 mod chat_context;
 
@@ -239,7 +239,8 @@ impl CommitCommand {
                 "Using default commit behavior: {}\n",
                 default_commit_behavior
             ));
-            if *default_commit_behavior == DefaultBehavior::No {
+
+            if default_commit_behavior.is_no() {
                 outro("Commit cancelled, exiting...");
                 return Ok(None);
             }
@@ -372,17 +373,19 @@ impl CommitCommand {
                     "Using default push behavior: {}\n",
                     default_push_behavior
                 ));
-                match default_push_behavior {
-                    DefaultBehavior::Yes => true,
-                    DefaultBehavior::No => false,
-                    DefaultBehavior::Ask => Confirm::with_theme(&ColorfulTheme::default())
+                if default_push_behavior.is_no() {
+                    false
+                } else if default_push_behavior.is_yes() {
+                    true
+                } else {
+                    Confirm::with_theme(&ColorfulTheme::default())
                         .with_prompt(format!(
                             "Do you want to push these changes to the remote repository {}?",
                             remote
                         ))
                         .default(true)
                         .interact_opt()?
-                        .unwrap_or(false),
+                        .unwrap_or(false)
                 }
             }
             _ => Confirm::with_theme(&ColorfulTheme::default())
