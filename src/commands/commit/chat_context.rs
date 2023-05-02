@@ -63,12 +63,12 @@ impl ChatContext {
         let lang = format!("Use {} to answer.", translation.language);
         system_message.push(&lang);
         system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
-
         let signed_of_line = format!(
             "Include a 'Signed-off-by: {} <{}>' line indicating the author of the commit.",
             name, email
         );
         system_message.push(&signed_of_line);
+        system_message.push("Exclude anything unnecessary such as the original translation—your entire response will be passed directly into git commit.");
         let mut assistant_message = String::new();
         if *emoji_enabled {
             assistant_message.push_str(&format!("🐛 {}\n", translation.commit_fix));
