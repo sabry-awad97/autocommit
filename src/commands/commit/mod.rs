@@ -87,7 +87,7 @@ impl CommitCommand {
                     return Ok(());
                 }
             } else {
-                staged_spinner.stop(format!(
+                staged_spinner.stop(&format!(
                     "{} staged files:\n{}",
                     staged_files.len().to_string().green(),
                     staged_files
@@ -156,19 +156,19 @@ impl CommitCommand {
         let git_commit_output = GitRepository::git_commit(&commit_message).await?;
         outro(&git_commit_output);
         GitRepository::git_add_all().await?;
-        commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
+        commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         debug!("Changes committed successfully");
         Ok(())
     }
 
     pub async fn pull_changes(remote: &str) -> anyhow::Result<()> {
         let mut pull_spinner = spinner();
-        pull_spinner.start(format!(
+        pull_spinner.start(&format!(
             "Pulling changes from remote repository {}...",
             remote.green().bold()
         ));
         GitRepository::git_pull(&remote).await?;
-        pull_spinner.stop(format!(
+        pull_spinner.stop(&format!(
             "{} Changes pulled successfully from remote repository {}.",
             "✔".green(),
             remote.green().bold()
@@ -186,12 +186,12 @@ impl CommitCommand {
         branch_name: Option<String>,
     ) -> anyhow::Result<()> {
         let mut push_spinner = spinner();
-        push_spinner.start(format!(
+        push_spinner.start(&format!(
             "Pushing changes to remote repository {}...",
             remote.green().bold()
         ));
         GitRepository::git_push(&remote, branch_name).await?;
-        push_spinner.stop(format!(
+        push_spinner.stop(&format!(
             "{} Changes pushed successfully to remote repository {}.",
             "✔".green(),
             remote.green().bold()
