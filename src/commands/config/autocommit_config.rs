@@ -11,8 +11,8 @@ use strum::IntoEnumIterator;
 use crate::{git::GitRepository, i18n::language::Language};
 
 use super::{
+    config_data::ConfigData,
     config_keys::{ConfigItem, ConfigKey, DefaultBehaviorOption, DefaultLanguage, OptionString},
-    ConfigData,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
