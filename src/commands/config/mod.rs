@@ -69,6 +69,42 @@ pub struct ConfigData {
     pub default_commit_behavior: Option<DefaultBehavior>,
 }
 
+impl ConfigData {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update_config(&mut self, key: &ConfigKey, value: &str) -> Result<()> {
+        match key {
+            ConfigKey::DescriptionEnabled => match value.parse() {
+                Ok(value) => self.description_enabled = value,
+                Err(_) => return Err(anyhow!("Invalid value for description")),
+            },
+            ConfigKey::EmojiEnabled => match value.parse() {
+                Ok(value) => self.emoji_enabled = value,
+                Err(_) => return Err(anyhow!("Invalid value for emoji")),
+            },
+            ConfigKey::Language => match value {
+                "english" => self.language = Language::English,
+                _ => return Err(anyhow!("Unsupported language")),
+            },
+            ConfigKey::Name => self.name = value.to_owned(),
+            ConfigKey::Email => self.email = value.to_owned(),
+            ConfigKey::DefaultCommitMessage => self.default_commit_message = Some(value.to_owned()),
+            ConfigKey::DefaultPushBehavior => match value.parse() {
+                Ok(value) => self.default_push_behavior = Some(value),
+                Err(_) => return Err(anyhow!("Invalid value for default_push_behavior")),
+            },
+            ConfigKey::DefaultCommitBehavior => match value.parse() {
+                Ok(value) => self.default_commit_behavior = Some(value),
+                Err(_) => return Err(anyhow!("Invalid value for default_commit_behavior")),
+            },
+        }
+
+        Ok(())
+    }
+}
+
 const POSSIBLE_VALUES: &[&str; 7] = &[
     "description",
     "emoji",
@@ -177,34 +213,8 @@ impl AutocommitConfig {
     }
 
     fn update_config(&mut self, key: &ConfigKey, value: &str) -> Result<()> {
-        match key {
-            ConfigKey::DescriptionEnabled => match value.parse() {
-                Ok(value) => self.config_data.description_enabled = value,
-                Err(_) => return Err(anyhow!("Invalid value for description")),
-            },
-            ConfigKey::EmojiEnabled => match value.parse() {
-                Ok(value) => self.config_data.emoji_enabled = value,
-                Err(_) => return Err(anyhow!("Invalid value for emoji")),
-            },
-            ConfigKey::Language => match value {
-                "english" => self.config_data.language = Language::English,
-                _ => return Err(anyhow!("Unsupported language")),
-            },
-            ConfigKey::Name => self.config_data.name = value.to_owned(),
-            ConfigKey::Email => self.config_data.email = value.to_owned(),
-            ConfigKey::DefaultCommitMessage => {
-                self.config_data.default_commit_message = Some(value.to_owned())
-            }
-            ConfigKey::DefaultPushBehavior => match value.parse() {
-                Ok(value) => self.config_data.default_push_behavior = Some(value),
-                Err(_) => return Err(anyhow!("Invalid value for default_push_behavior")),
-            },
-            ConfigKey::DefaultCommitBehavior => match value.parse() {
-                Ok(value) => self.config_data.default_commit_behavior = Some(value),
-                Err(_) => return Err(anyhow!("Invalid value for default_commit_behavior")),
-            },
-        }
-
+        self.config_data.update_config(key, value)?;
+        self.config_data.validate()?;
         Ok(())
     }
 
