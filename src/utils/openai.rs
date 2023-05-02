@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
 use dotenv::dotenv;
+use log::debug;
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -65,21 +66,21 @@ impl Message {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ChatCompletionChoice {
     pub index: u64,
     pub message: Message,
     pub finish_reason: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Usage {
     pub prompt_tokens: i64,
     pub completion_tokens: i64,
     pub total_tokens: i64,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct OAIResponse {
     pub id: String,
     pub object: String,
@@ -185,17 +186,21 @@ impl OpenAI {
         messages: impl Into<Vec<Message>>,
         max_tokens: usize,
     ) -> Result<OAIResponse, Error> {
+        debug!("Creating chat completion with model: {}", model_name);
+
         let chat_request = OAIRequest::builder(model_name, messages)
             .max_tokens::<u64>(max_tokens.try_into().unwrap())
             .temperature(0.5)
             .top_p(0.1)
             .build()?;
 
+        debug!("Request body: {:?}", chat_request);
+
         let response = &self
             .send_request(&chat_request)
             .await
             .map_err(|err| anyhow!("Failed to generate code: {}", err))?;
-
+        debug!("Response: {:?}", response);
         Ok(response.to_owned())
     }
 }
@@ -222,7 +227,7 @@ impl Generator {
             .first()
             .map(|choice| choice.message.content.clone())
             .ok_or_else(|| anyhow!("No message returned"))?;
-
+        debug!("Generated message: {}", result);
         Ok(result)
     }
 }
