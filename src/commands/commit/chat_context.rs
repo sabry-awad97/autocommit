@@ -23,23 +23,23 @@ impl ChatContext {
     pub fn get_initial_context(config: &AutocommitConfig) -> ChatContext {
         let translation = i18n::get_translation(&Language::English).unwrap();
         let config_data = &config.config_data;
-        let emoji_enabled = config_data.emoji_enabled;
-        let description_enabled = config_data.description_enabled;
-        let name = &config_data.name;
-        let email = &config_data.email;
+        let emoji_enabled = config_data.emoji_enabled.get_value_ref();
+        let description_enabled = config_data.description_enabled.get_value_ref();
+        let name = &config_data.name.get_value_ref();
+        let email = &config_data.email.get_value_ref();
 
         let mut system_message = vec![
             "You are to act as the author of a commit message in git.",
             "Your mission is to create clean and comprehensive commit messages in the conventional commit convention and explain why a change was done."
         ];
 
-        if emoji_enabled {
+        if *emoji_enabled {
             system_message.push("Use GitMoji convention to preface the commit.");
         } else {
             system_message.push("Do not preface the commit with anything.");
         }
 
-        if description_enabled {
+        if *description_enabled {
             system_message.push("Be specific and concise in the commit message summary, highlighting the most important change(s).");
             system_message.push("Provide more detailed explanation in the commit description, including any relevant context or reasoning behind the change.");
             system_message.push("Don't start it with 'This commit', just describe the changes.");
@@ -70,11 +70,11 @@ impl ChatContext {
         );
         system_message.push(&signed_of_line);
         let mut assistant_message = String::new();
-        if emoji_enabled {
+        if *emoji_enabled {
             assistant_message.push_str(&format!("🐛 {}\n", translation.commit_fix));
             assistant_message.push_str(&format!("✨ {}\n", translation.commit_feat));
         }
-        if description_enabled {
+        if *description_enabled {
             assistant_message.push_str(&translation.commit_description);
         }
 
