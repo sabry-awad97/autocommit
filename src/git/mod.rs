@@ -1,7 +1,10 @@
 use std::process::Output;
 
 use anyhow::anyhow;
+use log::error;
 use tokio::process::Command;
+
+use crate::utils::outro;
 
 pub struct GitRepository {}
 
@@ -113,9 +116,7 @@ impl GitRepository {
             .collect::<Vec<_>>();
 
         if !lock_files.is_empty() {
-            eprintln!(
-                "Some files are '.lock' files which are excluded by default from 'git diff':\n"
-            );
+            outro("Some files are '.lock' files which are excluded by default from 'git diff':");
             for file in &lock_files {
                 eprintln!("{}", file);
             }
@@ -177,6 +178,7 @@ impl GitRepository {
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            error!("Failed to commit changes: {}", error_message);
             return Err(anyhow!(error_message));
         }
 
@@ -187,10 +189,15 @@ impl GitRepository {
         let output = Command::new("git").arg("pull").arg(remote).output().await?;
 
         if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr);
+            error!(
+                "Failed to pull changes from remote repository {}: {}",
+                remote, error_message
+            );
             return Err(anyhow!(
                 "Failed to pull changes from remote repository {}: {}",
                 remote,
-                String::from_utf8_lossy(&output.stderr)
+                error_message
             ));
         }
         Ok(())
@@ -205,10 +212,15 @@ impl GitRepository {
         let output = command.output().await?;
 
         if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr);
+            error!(
+                "Failed to push changes to remote repository {}: {}",
+                remote, error_message
+            );
             return Err(anyhow!(
                 "Failed to push changes to remote repository {}: {}",
                 remote,
-                String::from_utf8_lossy(&output.stderr)
+                error_message
             ));
         }
         Ok(())
@@ -223,6 +235,7 @@ impl GitRepository {
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            error!("Failed to get git remotes: {}", error_message);
             return Err(anyhow!(error_message));
         }
 
@@ -264,10 +277,16 @@ impl GitRepository {
         let output = cmd.output().await?;
 
         if !output.status.success() {
+            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            error!(
+                "Failed to checkout new branch {}: {}",
+                branch_name.clone().unwrap_or("".to_string()),
+                error_message
+            );
             return Err(anyhow!(
                 "Failed to checkout new branch {}: {}",
                 branch_name.unwrap_or("".to_string()),
-                String::from_utf8_lossy(&output.stderr)
+                error_message
             ));
         }
 

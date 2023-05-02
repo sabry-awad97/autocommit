@@ -97,7 +97,7 @@ impl CommitCommand {
                         .join("\n")
                 ));
 
-                let staged_diff = GitRepository::get_staged_diff(&[]).await?;
+                let staged_diff = GitRepository::get_staged_diff(&staged_files).await?;
 
                 let commit_message = if self.skip_chatbot {
                     if let Some(default_message) = config
