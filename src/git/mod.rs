@@ -1,6 +1,7 @@
 use std::process::Output;
 
 use anyhow::anyhow;
+use colored::Colorize;
 use log::error;
 use tokio::process::Command;
 
@@ -54,7 +55,7 @@ impl GitRepository {
             })?
             .stdout;
 
-        Ok(String::from_utf8(modified)?
+        let mut files: Vec<_> = String::from_utf8(modified)?
             .split('\n')
             .chain(String::from_utf8(others)?.split('\n'))
             .filter_map(|s| {
@@ -64,7 +65,10 @@ impl GitRepository {
 
                 Some(String::from(s))
             })
-            .collect())
+            .collect();
+
+        files.sort();
+        Ok(files)
     }
 
     pub async fn get_staged_files() -> anyhow::Result<Vec<String>> {
@@ -99,20 +103,23 @@ impl GitRepository {
 
         // let ig = get_ignore_patterns().await?;
 
-        Ok(files
+        let mut allowed_files: Vec<_> = files
             .filter(|_file| {
                 // ig.matched(file, false).is_none()
                 true
             })
             .map(|v| v.to_owned())
-            .collect())
+            .collect();
+
+        allowed_files.sort();
+        Ok(allowed_files)
     }
 
     pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
         let lock_files = files
             .iter()
             .filter(|file| file.contains(".lock") || file.contains("-lock."))
-            .map(|s| format!(":(exclude){}", s))
+            .map(|s| format!("{}{}", ":(exclude)".red(), s))
             .collect::<Vec<_>>();
 
         if !lock_files.is_empty() {
@@ -167,7 +174,7 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_commit(message: &str) -> anyhow::Result<()> {
+    pub async fn git_commit(message: &str) -> anyhow::Result<String> {
         let output = Command::new("git")
             .arg("commit")
             .arg("-m")
@@ -182,7 +189,8 @@ impl GitRepository {
             return Err(anyhow!(error_message));
         }
 
-        Ok(())
+        let commit_output = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(commit_output)
     }
 
     pub async fn git_pull(remote: &str) -> anyhow::Result<()> {
