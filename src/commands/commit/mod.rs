@@ -154,9 +154,9 @@ impl CommitCommand {
         commit_spinner.start(COMMITTING_CHANGES);
         GitRepository::git_checkout_new_branch(self.branch_name.clone()).await?;
         let git_commit_output = GitRepository::git_commit(&commit_message).await?;
-        outro(&git_commit_output);
         GitRepository::git_add_all().await?;
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
+        outro(&git_commit_output);
         debug!("Changes committed successfully");
         Ok(())
     }
