@@ -23,6 +23,7 @@ struct CLI {
 
 #[tokio::main]
 async fn main() {
+    println!("{esc}c", esc = 27 as char);
     intro("Autocommit");
 
     let cli = CLI::from_args();
