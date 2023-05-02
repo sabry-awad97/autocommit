@@ -36,16 +36,11 @@ impl Spinner {
         self.pb.set_style(
             ProgressStyle::default_spinner()
                 .tick_chars("◇◇")
-                .template("{spinner:.green} {msg}").unwrap(),
+                .template("{spinner:.green} {msg}")
+                .unwrap(),
         );
-        println!("\n{}", s_bar);
+        println!("{}", s_bar);
         self.pb.finish_with_message(message.to_string());
-    }
-}
-
-impl Drop for Spinner {
-    fn drop(&mut self) {
-        self.stop("");
     }
 }
 
