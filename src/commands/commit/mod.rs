@@ -6,7 +6,7 @@ use crate::{
 use anyhow::anyhow;
 use colored::{Color, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
-use log::info;
+use log::{info, debug};
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -156,6 +156,7 @@ impl CommitCommand {
         GitRepository::git_commit(&commit_message).await?;
         GitRepository::git_add_all().await?;
         commit_spinner.stop(format!("{} Changes committed successfully", "✔".green()));
+        debug!("Changes committed successfully");
         Ok(())
     }
 
@@ -171,6 +172,7 @@ impl CommitCommand {
             "✔".green(),
             remote.green().bold()
         ));
+        debug!("Changes pulled successfully from remote repository {}", remote);
         Ok(())
     }
 
@@ -190,6 +192,7 @@ impl CommitCommand {
             "✔".green(),
             remote.green().bold()
         ));
+        debug!("Changes pushed successfully to remote repository {}", remote);
         Ok(())
     }
 
@@ -293,6 +296,7 @@ impl CommitCommand {
             "Commit message:\n{}\n{}\n{}",
             separator, commit_message, separator
         ));
+        debug!("Commit message generated successfully");
         Ok(commit_message)
     }
 
