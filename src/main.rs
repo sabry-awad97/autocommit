@@ -7,7 +7,7 @@ mod i18n;
 mod utils;
 
 use commands::{get_config, Command};
-use utils::{intro, outro};
+use utils::{init_logger, intro, outro};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -22,6 +22,7 @@ struct CLI {
 
 #[tokio::main]
 async fn main() {
+    init_logger("debug");
     intro("Autocommit");
 
     let cli = CLI::from_args();
