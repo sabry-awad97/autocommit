@@ -100,7 +100,12 @@ impl CommitCommand {
                 let staged_diff = GitRepository::get_staged_diff(&[]).await?;
 
                 let commit_message = if self.skip_chatbot {
-                    if let Some(default_message) = &config.config_data.default_commit_message {
+                    if let Some(default_message) = config
+                        .config_data
+                        .default_commit_message
+                        .get_value_ref()
+                        .get_inner_value()
+                    {
                         outro(&format!(
                             "Using default commit message:\n{}\n",
                             default_message
@@ -224,7 +229,12 @@ impl CommitCommand {
                 outro("Commit cancelled, exiting...");
                 return Ok(None);
             }
-        } else if let Some(default_commit_behavior) = &config.config_data.default_commit_behavior {
+        } else if let Some(default_commit_behavior) = &config
+            .config_data
+            .default_commit_behavior
+            .get_value_ref()
+            .get_inner_value()
+        {
             outro(&format!(
                 "Using default commit behavior: {}\n",
                 default_commit_behavior
@@ -250,7 +260,12 @@ impl CommitCommand {
         let mut chat_context = ChatContext::get_initial_context(config);
         chat_context.add_message(MessageRole::User, content.to_owned());
 
-        let commit_message = match &config.config_data.default_commit_message {
+        let commit_message = match &config
+            .config_data
+            .default_commit_message
+            .get_value_ref()
+            .get_inner_value()
+        {
             Some(default_message) => {
                 outro(&format!(
                     "Using default commit message:\n{}\n",
@@ -346,7 +361,12 @@ impl CommitCommand {
     }
 
     pub fn prompt_for_push(remote: &str, config: &AutocommitConfig) -> anyhow::Result<bool> {
-        let push_confirmed_by_user = match &config.config_data.default_push_behavior {
+        let push_confirmed_by_user = match &config
+            .config_data
+            .default_push_behavior
+            .get_value_ref()
+            .get_inner_value()
+        {
             Some(default_push_behavior) => {
                 outro(&format!(
                     "Using default push behavior: {}\n",
