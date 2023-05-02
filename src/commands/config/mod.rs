@@ -10,61 +10,26 @@ use structopt::StructOpt;
 use crate::git::GitRepository;
 use crate::i18n::language::Language;
 use crate::utils::outro;
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
-// This enum represents the configuration keys
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Display, EnumIter, EnumString)]
 enum ConfigKey {
+    #[strum(serialize = "description")]
     DescriptionEnabled,
+    #[strum(serialize = "emoji")]
     EmojiEnabled,
+    #[strum(serialize = "language")]
     Language,
+    #[strum(serialize = "name")]
     Name,
+    #[strum(serialize = "email")]
     Email,
+    #[strum(serialize = "default_commit_message")]
     DefaultCommitMessage,
+    #[strum(serialize = "default_push_behavior")]
     DefaultPushBehavior,
+    #[strum(serialize = "default_commit_behavior")]
     DefaultCommitBehavior,
-}
-
-const ALL_KEYS: [ConfigKey; 8] = [
-    ConfigKey::DescriptionEnabled,
-    ConfigKey::EmojiEnabled,
-    ConfigKey::Language,
-    ConfigKey::Name,
-    ConfigKey::Email,
-    ConfigKey::DefaultCommitMessage,
-    ConfigKey::DefaultPushBehavior,
-    ConfigKey::DefaultCommitBehavior,
-];
-
-impl std::fmt::Display for ConfigKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ConfigKey::DescriptionEnabled => write!(f, "description"),
-            ConfigKey::EmojiEnabled => write!(f, "emoji"),
-            ConfigKey::Language => write!(f, "language"),
-            ConfigKey::Name => write!(f, "name"),
-            ConfigKey::Email => write!(f, "email"),
-            ConfigKey::DefaultCommitMessage => write!(f, "default_commit_message"),
-            ConfigKey::DefaultPushBehavior => write!(f, "default_push_behavior"),
-            ConfigKey::DefaultCommitBehavior => write!(f, "default_commit_behavior"),
-        }
-    }
-}
-
-impl std::str::FromStr for ConfigKey {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "description" => Ok(ConfigKey::DescriptionEnabled),
-            "emoji" => Ok(ConfigKey::EmojiEnabled),
-            "language" => Ok(ConfigKey::Language),
-            "name" => Ok(ConfigKey::Name),
-            "email" => Ok(ConfigKey::Email),
-            "default_commit_message" => Ok(ConfigKey::DefaultCommitMessage),
-            "default_push_behavior" => Ok(ConfigKey::DefaultPushBehavior),
-            _ => Err(format!("Invalid ConfigKey: {}", s)),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -73,7 +38,7 @@ pub struct AutocommitConfig {
     pub config_data: ConfigData,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Display, EnumString, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(untagged)]
 #[serde(rename_all = "lowercase")]
 pub enum YesNo {
@@ -84,15 +49,6 @@ pub enum YesNo {
 impl Default for YesNo {
     fn default() -> Self {
         Self::No
-    }
-}
-
-impl std::fmt::Display for YesNo {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            YesNo::Yes => write!(f, "yes"),
-            YesNo::No => write!(f, "no"),
-        }
     }
 }
 
@@ -207,9 +163,19 @@ impl AutocommitConfig {
                 "english" => self.config_data.language = Language::English,
                 _ => return Err(anyhow!("Unsupported language")),
             },
-            _ => {
-                return Err(anyhow!("Unsupported config key: {}", key));
+            ConfigKey::Name => self.config_data.name = value.to_owned(),
+            ConfigKey::Email => self.config_data.email = value.to_owned(),
+            ConfigKey::DefaultCommitMessage => {
+                self.config_data.default_commit_message = Some(value.to_owned())
             }
+            ConfigKey::DefaultPushBehavior => match value.parse() {
+                Ok(value) => self.config_data.default_push_behavior = Some(value),
+                Err(_) => return Err(anyhow!("Invalid value for default_push_behavior")),
+            },
+            ConfigKey::DefaultCommitBehavior => match value.parse() {
+                Ok(value) => self.config_data.default_commit_behavior = Some(value),
+                Err(_) => return Err(anyhow!("Invalid value for default_commit_behavior")),
+            },
         }
 
         Ok(())
@@ -288,7 +254,8 @@ impl ConfigCommand {
         match self {
             ConfigCommand::Get { keys, .. } => {
                 let config_values = if keys.is_empty() {
-                    config.get_config_values(&ALL_KEYS)
+                    let all_keys = ConfigKey::iter().collect::<Vec<_>>();
+                    config.get_config_values(&all_keys)
                 } else {
                     keys.iter()
                         .map(|key| {
