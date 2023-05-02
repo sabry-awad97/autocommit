@@ -93,6 +93,25 @@ impl AutocommitConfig {
         })
     }
 
+    fn update_config_from_env(config: &mut AutocommitConfig) -> Result<()> {
+        let env_vars = ConfigKey::iter()
+            .map(|key| {
+                (
+                    format!("AUTOCOMMIT_{}", key.to_string().to_uppercase()),
+                    key,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        for (var, key) in env_vars.iter() {
+            if let Ok(value) = env::var(var) {
+                config.update_config(key, &value)?;
+            }
+        }
+
+        Ok(())
+    }
+
     // This function reads the configuration from a file
     fn from_file(path: &PathBuf) -> Result<AutocommitConfig> {
         let mut file = File::open(path)
@@ -109,20 +128,7 @@ impl AutocommitConfig {
         let mut config: AutocommitConfig = toml::from_str(&contents)
             .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
 
-        let env_vars = ConfigKey::iter()
-            .map(|key| {
-                (
-                    format!("AUTOCOMMIT_{}", key.to_string().to_uppercase()),
-                    key,
-                )
-            })
-            .collect::<Vec<_>>();
-
-        for (var, key) in env_vars.iter() {
-            if let Ok(value) = env::var(var) {
-                config.update_config(key, &value)?;
-            }
-        }
+        Self::update_config_from_env(&mut config)?;
 
         Ok(config)
     }
