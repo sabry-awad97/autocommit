@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
 use dotenv::dotenv;
-use log::debug;
+use log::{debug, info};
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -186,7 +186,7 @@ impl OpenAI {
         messages: impl Into<Vec<Message>>,
         max_tokens: usize,
     ) -> Result<OAIResponse, Error> {
-        debug!("Creating chat completion with model: {}", model_name);
+        info!("Creating chat completion with model: {}", model_name);
 
         let chat_request = OAIRequest::builder(model_name, messages)
             .max_tokens::<u64>(max_tokens.try_into().unwrap())
@@ -200,7 +200,7 @@ impl OpenAI {
             .send_request(&chat_request)
             .await
             .map_err(|err| anyhow!("Failed to generate code: {}", err))?;
-        debug!("Response: {:?}", response);
+        info!("Response: {:?}", response);
         Ok(response.to_owned())
     }
 }
