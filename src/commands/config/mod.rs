@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Context, Result};
 use colored::*;
-use serde::{Deserialize, Serialize};
-use std::env;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::{env, fmt};
 use structopt::StructOpt;
 
 use crate::git::GitRepository;
@@ -33,103 +33,437 @@ enum ConfigKey {
     DefaultCommitBehavior,
 }
 
+pub trait ConfigValue: FromStr + ToString {
+    fn validate(&self) -> anyhow::Result<()>;
+    fn update(&mut self, value: &str) -> Result<()>;
+    fn get_value(&self) -> String;
+}
+
+impl ConfigValue for bool {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        match value.parse() {
+            Ok(value) => *self = value,
+            Err(_) => return Err(anyhow!("Invalid value for boolean")),
+        }
+
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        self.to_string()
+    }
+}
+
+#[derive(Debug, Serialize)]
+
+pub struct DefaultLanguage(pub Language);
+
+impl FromStr for DefaultLanguage {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "english" => Ok(Self(Language::English)),
+            _ => Ok(Self(Language::English)),
+        }
+    }
+}
+
+impl fmt::Display for DefaultLanguage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Language::English => write!(f, "english"),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for DefaultLanguage {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.to_lowercase().as_str() {
+            "english" => Ok(Self(Language::English)),
+            _ => Ok(Self(Language::English)),
+        }
+    }
+}
+
+impl ConfigValue for DefaultLanguage {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        match value {
+            "english" => self.0 = Language::English,
+            _ => return Err(anyhow!("Unsupported language")),
+        }
+
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        format!("{:?}", self.0).to_lowercase()
+    }
+}
+
+impl ConfigValue for String {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        *self = value.to_owned();
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        self.to_owned()
+    }
+}
+
+#[derive(Debug, Serialize)]
+
+pub struct OptionString(Option<String>);
+
+impl OptionString {
+    pub fn get_inner_value(&self) -> Option<String> {
+        self.0.clone()
+    }
+}
+
+impl FromStr for OptionString {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Ok(Self(None))
+        } else {
+            Ok(Self(Some(s.to_owned())))
+        }
+    }
+}
+
+impl fmt::Display for OptionString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Some(s) => write!(f, "{}", s),
+            None => write!(f, ""),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for OptionString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = Option::<String>::deserialize(deserializer)?;
+        Ok(OptionString(s))
+    }
+}
+
+impl ConfigValue for OptionString {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        match value.parse() {
+            Ok(value) => self.0 = Some(value),
+            Err(_) => return Err(anyhow!("Invalid value for option string")),
+        }
+
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        self.0.as_ref().map(|s| s.to_owned()).unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Serialize)]
+
+pub struct DefaultBehaviorOption(Option<DefaultBehavior>);
+
+impl DefaultBehaviorOption {
+    pub fn get_inner_value(&self) -> Option<DefaultBehavior> {
+        self.0.clone()
+    }
+}
+
+impl FromStr for DefaultBehaviorOption {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "yes" => Ok(Self(Some(DefaultBehavior::Yes))),
+            "no" => Ok(Self(Some(DefaultBehavior::No))),
+            "ask" => Ok(Self(Some(DefaultBehavior::Ask))),
+            _ => Ok(Self(None)),
+        }
+    }
+}
+
+impl fmt::Display for DefaultBehaviorOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Some(DefaultBehavior::Yes) => write!(f, "yes"),
+            Some(DefaultBehavior::No) => write!(f, "no"),
+            Some(DefaultBehavior::Ask) => write!(f, "ask"),
+            None => write!(f, ""),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for DefaultBehaviorOption {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = Option::<DefaultBehavior>::deserialize(deserializer)?;
+        Ok(DefaultBehaviorOption(s))
+    }
+}
+
+impl ConfigValue for DefaultBehaviorOption {
+    fn validate(&self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        match value.parse() {
+            Ok(value) => self.0 = Some(value),
+            Err(_) => return Err(anyhow!("Invalid value for default behavior")),
+        }
+
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        format!("{:?}", self.0.as_ref().unwrap_or(&Default::default())).to_lowercase()
+    }
+}
+
+#[derive(Debug)]
+pub struct ConfigItem<T>
+where
+    T: ConfigValue,
+{
+    value: T,
+}
+
+impl<T> Serialize for ConfigItem<T>
+where
+    T: Serialize + ConfigValue,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.value.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ConfigItem<T>
+where
+    T: Deserialize<'de> + ConfigValue,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        T::deserialize(deserializer).map(Self::new)
+    }
+}
+
+impl<T> ConfigItem<T>
+where
+    T: ConfigValue,
+{
+    fn new(value: T) -> Self {
+        Self { value }
+    }
+
+    fn update(&mut self, value: &str) -> Result<()> {
+        self.value.update(value)?;
+        self.value.validate()?;
+        Ok(())
+    }
+
+    fn get_value(&self) -> String {
+        self.value.get_value()
+    }
+
+    pub fn get_value_ref(&self) -> &T {
+        &self.value
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AutocommitConfig {
     #[serde(rename = "config")]
     pub config_data: ConfigData,
 }
 
-#[derive(Debug, Display, EnumString, Deserialize, Serialize, Clone, PartialEq)]
-#[serde(untagged)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Display, EnumString, Clone, PartialEq)]
 pub enum DefaultBehavior {
+    #[strum(serialize = "yes")]
     Yes,
+    #[strum(serialize = "no")]
     No,
+    #[strum(serialize = "ask")]
     Ask,
 }
 
 impl Default for DefaultBehavior {
     fn default() -> Self {
-        Self::No
+        Self::Ask
     }
 }
 
-// This struct represents the configuration data
-#[derive(Debug, Deserialize, Serialize)]
+impl<'de> Deserialize<'de> for DefaultBehavior {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        match s.as_str() {
+            "yes" => Ok(DefaultBehavior::Yes),
+            "no" => Ok(DefaultBehavior::No),
+            "ask" => Ok(DefaultBehavior::Ask),
+            _ => Err(serde::de::Error::custom(format!("invalid value: {}", s))),
+        }
+    }
+}
+
+impl Serialize for DefaultBehavior {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            DefaultBehavior::Yes => serializer.serialize_str("yes"),
+            DefaultBehavior::No => serializer.serialize_str("no"),
+            DefaultBehavior::Ask => serializer.serialize_str("ask"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct ConfigData {
     #[serde(rename = "description")]
-    pub description_enabled: bool,
+    pub description_enabled: ConfigItem<bool>,
     #[serde(rename = "emoji")]
-    pub emoji_enabled: bool,
-    pub language: Language,
-    pub name: String,
-    pub email: String,
-    pub default_commit_message: Option<String>,
-    pub default_push_behavior: Option<DefaultBehavior>,
-    pub default_commit_behavior: Option<DefaultBehavior>,
+    pub emoji_enabled: ConfigItem<bool>,
+    pub language: ConfigItem<DefaultLanguage>,
+    pub name: ConfigItem<String>,
+    pub email: ConfigItem<String>,
+    pub default_commit_message: ConfigItem<OptionString>,
+    pub default_push_behavior: ConfigItem<DefaultBehaviorOption>,
+    pub default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
+}
+
+impl<'de> Deserialize<'de> for ConfigData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Debug, Deserialize)]
+        struct InnerConfigData {
+            #[serde(rename = "description")]
+            description_enabled: ConfigItem<bool>,
+            #[serde(rename = "emoji")]
+            emoji_enabled: ConfigItem<bool>,
+            language: ConfigItem<DefaultLanguage>,
+            name: ConfigItem<String>,
+            email: ConfigItem<String>,
+            default_commit_message: ConfigItem<OptionString>,
+            default_push_behavior: ConfigItem<DefaultBehaviorOption>,
+            default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
+        }
+
+        let inner = InnerConfigData::deserialize(deserializer)?;
+        Ok(Self {
+            description_enabled: inner.description_enabled,
+            emoji_enabled: inner.emoji_enabled,
+            language: inner.language,
+            name: inner.name,
+            email: inner.email,
+            default_commit_message: inner.default_commit_message,
+            default_push_behavior: inner.default_push_behavior,
+            default_commit_behavior: inner.default_commit_behavior,
+        })
+    }
 }
 
 impl ConfigData {
-    fn validate(&self) -> anyhow::Result<()> {
+    fn validate(&self) -> Result<()> {
+        self.description_enabled.value.validate()?;
+        self.emoji_enabled.value.validate()?;
+        self.language.value.validate()?;
+        self.name.value.validate()?;
+        self.email.value.validate()?;
+        self.default_commit_message.value.validate()?;
+        self.default_push_behavior.value.validate()?;
+        self.default_commit_behavior.value.validate()?;
         Ok(())
     }
 
     fn update_config(&mut self, key: &ConfigKey, value: &str) -> Result<()> {
         match key {
-            ConfigKey::DescriptionEnabled => match value.parse() {
-                Ok(value) => self.description_enabled = value,
-                Err(_) => return Err(anyhow!("Invalid value for description")),
-            },
-            ConfigKey::EmojiEnabled => match value.parse() {
-                Ok(value) => self.emoji_enabled = value,
-                Err(_) => return Err(anyhow!("Invalid value for emoji")),
-            },
-            ConfigKey::Language => match value {
-                "english" => self.language = Language::English,
-                _ => return Err(anyhow!("Unsupported language")),
-            },
-            ConfigKey::Name => self.name = value.to_owned(),
-            ConfigKey::Email => self.email = value.to_owned(),
-            ConfigKey::DefaultCommitMessage => self.default_commit_message = Some(value.to_owned()),
-            ConfigKey::DefaultPushBehavior => match value.parse() {
-                Ok(value) => self.default_push_behavior = Some(value),
-                Err(_) => return Err(anyhow!("Invalid value for default_push_behavior")),
-            },
-            ConfigKey::DefaultCommitBehavior => match value.parse() {
-                Ok(value) => self.default_commit_behavior = Some(value),
-                Err(_) => return Err(anyhow!("Invalid value for default_commit_behavior")),
-            },
+            ConfigKey::DescriptionEnabled => self.description_enabled.update(value)?,
+            ConfigKey::EmojiEnabled => self.emoji_enabled.update(value)?,
+            ConfigKey::Language => self.language.update(value)?,
+            ConfigKey::Name => self.name.update(value)?,
+            ConfigKey::Email => self.email.update(value)?,
+            ConfigKey::DefaultCommitMessage => self.default_commit_message.update(value)?,
+            ConfigKey::DefaultPushBehavior => self.default_push_behavior.update(value)?,
+            ConfigKey::DefaultCommitBehavior => self.default_commit_behavior.update(value)?,
         }
 
         Ok(())
     }
+
+    fn get_value(&self, key: &ConfigKey) -> String {
+        match key {
+            ConfigKey::DescriptionEnabled => self.description_enabled.get_value(),
+            ConfigKey::EmojiEnabled => self.emoji_enabled.get_value(),
+            ConfigKey::Language => self.language.get_value(),
+            ConfigKey::Name => self.name.get_value(),
+            ConfigKey::Email => self.email.get_value(),
+            ConfigKey::DefaultCommitMessage => self.default_commit_message.get_value(),
+            ConfigKey::DefaultPushBehavior => self.default_push_behavior.get_value(),
+            ConfigKey::DefaultCommitBehavior => self.default_push_behavior.get_value(),
+        }
+    }
 }
 
-const POSSIBLE_VALUES: &[&str; 7] = &[
-    "description",
-    "emoji",
-    "language",
-    "name",
-    "email",
-    "default_commit_message",
-    "default_commit_behavior",
-];
 impl AutocommitConfig {
     fn new() -> anyhow::Result<Self> {
         let name = GitRepository::get_git_name()?;
         let email = GitRepository::get_git_email()?;
-        Ok(Self {
-            config_data: ConfigData {
-                description_enabled: false,
-                emoji_enabled: false,
-                language: Language::English,
-                name,
-                email,
-                default_commit_message: None,
-                default_push_behavior: None,
-                default_commit_behavior: None,
-            },
-        })
+        let config_data = ConfigData {
+            description_enabled: ConfigItem::new(false),
+            emoji_enabled: ConfigItem::new(false),
+            language: ConfigItem::new(DefaultLanguage(Language::English)),
+            name: ConfigItem::new(name),
+            email: ConfigItem::new(email),
+            default_commit_message: ConfigItem::new(OptionString(None)),
+            default_push_behavior: ConfigItem::new(DefaultBehaviorOption(Some(
+                DefaultBehavior::default(),
+            ))),
+            default_commit_behavior: ConfigItem::new(DefaultBehaviorOption(Some(
+                DefaultBehavior::Ask,
+            ))),
+        };
+        Ok(Self { config_data })
     }
 
     fn update_config_from_env(config: &mut AutocommitConfig) -> Result<()> {
@@ -151,7 +485,6 @@ impl AutocommitConfig {
         Ok(())
     }
 
-    // This function reads the configuration from a file
     fn from_file(path: &PathBuf) -> Result<AutocommitConfig> {
         let mut file = File::open(path)
             .with_context(|| format!("Failed to open config file: {}", path.display()))?;
@@ -169,10 +502,11 @@ impl AutocommitConfig {
 
         Self::update_config_from_env(&mut config)?;
 
+        config.config_data.validate()?;
+
         Ok(config)
     }
 
-    // This function writes the configuration to a file
     fn to_file(&self, path: &PathBuf) -> Result<()> {
         let mut file = OpenOptions::new()
             .write(true)
@@ -219,37 +553,7 @@ impl AutocommitConfig {
     }
 
     fn get_config_value(&self, key: &ConfigKey) -> String {
-        match key {
-            ConfigKey::DescriptionEnabled => self.config_data.description_enabled.to_string(),
-            ConfigKey::EmojiEnabled => self.config_data.emoji_enabled.to_string(),
-            ConfigKey::Language => format!("{:?}", self.config_data.language).to_lowercase(),
-            ConfigKey::Name => format!("{:?}", self.config_data.name).to_lowercase(),
-            ConfigKey::Email => format!("{:?}", self.config_data.email).to_lowercase(),
-            ConfigKey::DefaultCommitMessage => format!(
-                "{:?}",
-                self.config_data
-                    .default_commit_message
-                    .clone()
-                    .unwrap_or_default()
-            )
-            .to_lowercase(),
-            ConfigKey::DefaultPushBehavior => format!(
-                "{:?}",
-                self.config_data
-                    .default_push_behavior
-                    .clone()
-                    .unwrap_or_default()
-            )
-            .to_lowercase(),
-            ConfigKey::DefaultCommitBehavior => format!(
-                "{:?}",
-                self.config_data
-                    .default_push_behavior
-                    .clone()
-                    .unwrap_or_default()
-            )
-            .to_lowercase(),
-        }
+        self.config_data.get_value(key)
     }
 
     fn get_config_values(&self, keys: &[ConfigKey]) -> Vec<(String, String)> {
@@ -263,7 +567,7 @@ impl AutocommitConfig {
 pub enum ConfigCommand {
     #[structopt(name = "get")]
     Get {
-        #[structopt(name = "keys", possible_values = POSSIBLE_VALUES)]
+        #[structopt(name = "keys", short, long)]
         keys: Vec<String>,
 
         #[structopt(short, long, parse(from_os_str))]
@@ -272,7 +576,7 @@ pub enum ConfigCommand {
 
     #[structopt(name = "set")]
     Set {
-        #[structopt(name = "key=value")]
+        #[structopt(name = "key=value", required = true, min_values = 1)]
         key_values: Vec<String>,
 
         #[structopt(short, long, parse(from_os_str))]
@@ -310,8 +614,11 @@ impl ConfigCommand {
                         .filter_map(Result::ok)
                         .collect()
                 };
-
-                for (key, value) in config_values {
+                let filtered_config_values = config_values
+                    .into_iter()
+                    .filter(|(_, value)| !value.is_empty())
+                    .collect::<Vec<_>>();
+                for (key, value) in filtered_config_values {
                     println!("{} = {}", key.bold(), value.green());
                 }
             }
