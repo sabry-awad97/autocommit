@@ -109,12 +109,19 @@ impl AutocommitConfig {
         let mut config: AutocommitConfig = toml::from_str(&contents)
             .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
 
-        if let Ok(value) = env::var("AUTOCOMMIT_NAME") {
-            config.update_config(&ConfigKey::Name, &value)?;
-        }
+        let env_vars = ConfigKey::iter()
+            .map(|key| {
+                (
+                    format!("AUTOCOMMIT_{}", key.to_string().to_uppercase()),
+                    key,
+                )
+            })
+            .collect::<Vec<_>>();
 
-        if let Ok(value) = env::var("AUTOCOMMIT_EMAIL") {
-            config.update_config(&ConfigKey::Email, &value)?;
+        for (var, key) in env_vars.iter() {
+            if let Ok(value) = env::var(var) {
+                config.update_config(key, &value)?;
+            }
         }
 
         Ok(config)
@@ -317,7 +324,7 @@ impl ConfigCommand {
                 let config = self.get_config()?;
                 let config_values =
                     config.get_config_values(&ConfigKey::iter().collect::<Vec<_>>());
-                
+
                 match shell.as_deref() {
                     Some("bash") => {
                         for (key, value) in config_values {
