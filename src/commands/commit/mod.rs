@@ -6,7 +6,7 @@ use crate::{
 use anyhow::anyhow;
 use colored::{Color, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
-use log::{info, debug};
+use log::{debug, info};
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -172,7 +172,10 @@ impl CommitCommand {
             "✔".green(),
             remote.green().bold()
         ));
-        debug!("Changes pulled successfully from remote repository {}", remote);
+        debug!(
+            "Changes pulled successfully from remote repository {}",
+            remote
+        );
         Ok(())
     }
 
@@ -192,7 +195,10 @@ impl CommitCommand {
             "✔".green(),
             remote.green().bold()
         ));
-        debug!("Changes pushed successfully to remote repository {}", remote);
+        debug!(
+            "Changes pushed successfully to remote repository {}",
+            remote
+        );
         Ok(())
     }
 
@@ -214,6 +220,8 @@ impl CommitCommand {
                 if is_generate_new_message_confirmed_by_user {
                     let mut new_content =
                         String::from("Suggest a professional git commit message with gitmoji\n");
+                    new_content.push_str("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.");
+
                     new_content.push_str(&staged_diff);
                     message = self
                         .generate_autocommit_message(config, &new_content)
@@ -259,12 +267,9 @@ impl CommitCommand {
     ) -> anyhow::Result<String> {
         const GENERATING_MESSAGE: &str = "Generating the commit message...";
         let mut commit_spinner = spinner();
-        commit_spinner.start(GENERATING_MESSAGE);
+        let commit_message;
 
-        let mut chat_context = ChatContext::get_initial_context(config);
-        chat_context.add_message(MessageRole::User, content.to_owned());
-
-        let commit_message = match &config
+        match &config
             .config_data
             .default_commit_message
             .get_value_ref()
@@ -275,12 +280,16 @@ impl CommitCommand {
                     "Using default commit message:\n{}\n",
                     default_message
                 ));
-                default_message.clone()
+                commit_message = default_message.clone();
             }
-            _ => chat_context.generate_message().await?,
-        };
-
-        commit_spinner.stop("📝 Commit message generated successfully");
+            _ => {
+                commit_spinner.start(GENERATING_MESSAGE);
+                let mut chat_context = ChatContext::get_initial_context(config);
+                chat_context.add_message(MessageRole::User, content.to_owned());
+                commit_message = chat_context.generate_message().await?;
+                commit_spinner.stop("📝 Commit message generated successfully");
+            }
+        }
 
         let separator_length = 40;
         let separator = "—"

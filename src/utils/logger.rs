@@ -1,5 +1,6 @@
 use log::LevelFilter;
 
+#[allow(dead_code)]
 pub fn init_logger(level: &str) {
     let log_level = std::env::var("LOG_LEVEL").unwrap_or_else(|_| level.to_string());
 

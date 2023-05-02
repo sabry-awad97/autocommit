@@ -23,7 +23,6 @@ struct CLI {
 
 #[tokio::main]
 async fn main() {
-    // init_logger("info");
     intro("Autocommit");
 
     let cli = CLI::from_args();

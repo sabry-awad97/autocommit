@@ -221,6 +221,14 @@ impl Spinner {
     }
 }
 
+impl Drop for Spinner {
+    fn drop(&mut self) {
+        if self.running.load(Ordering::SeqCst) {
+            self.stop("");
+        }
+    }
+}
+
 pub fn spinner() -> Spinner {
     Spinner::new("")
 }
