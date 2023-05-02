@@ -7,6 +7,7 @@ use crate::commands::config::config_keys::{
 use super::config_keys::{ConfigKey, ConfigValue};
 
 #[derive(Debug, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct ConfigData {
     #[serde(rename = "description")]
     pub description_enabled: ConfigItem<bool>,
