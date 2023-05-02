@@ -55,7 +55,7 @@ impl CommitCommand {
             let changed_files = GitRepository::get_changed_files().await?;
 
             if staged_files.is_empty() && changed_files.is_empty() {
-                outro("No changes detected, exiting...");
+                outro(&format!("{}", "No changes detected, exiting...".red()));
                 return Ok(());
             }
 
