@@ -241,6 +241,8 @@ pub enum ConfigCommand {
         #[structopt(short, long, parse(from_os_str))]
         config_path: Option<PathBuf>,
     },
+    #[structopt(name = "reset")]
+    Reset,
 }
 
 impl ConfigCommand {
@@ -290,6 +292,11 @@ impl ConfigCommand {
                 config.to_file(&self.get_config_path())?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
+            ConfigCommand::Reset => {
+                let config = AutocommitConfig::new()?;
+                config.to_file(&self.get_config_path())?;
+                outro(&format!("{} Config successfully reset", "✔".green()));
+            }
         }
 
         Ok(())
@@ -299,6 +306,7 @@ impl ConfigCommand {
         match self {
             ConfigCommand::Get { config_path, .. } => config_path.clone(),
             ConfigCommand::Set { config_path, .. } => config_path.clone(),
+            ConfigCommand::Reset => None,
         }
         .unwrap_or_else(|| {
             let mut path = dirs::home_dir().unwrap_or_default();
