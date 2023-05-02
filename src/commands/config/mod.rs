@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use colored::*;
+use log::{debug, info};
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 use strum::IntoEnumIterator;
@@ -44,7 +45,9 @@ pub enum ConfigCommand {
 
 impl ConfigCommand {
     fn get_config(&self) -> Result<AutocommitConfig> {
-        let config = AutocommitConfig::from_file_or_new(&self.get_config_path()?)?;
+        let config_path = self.get_config_path()?;
+        debug!("Loading config from {:?}", config_path);
+        let config = AutocommitConfig::from_file_or_new(&config_path)?;
         Ok(config)
     }
 
@@ -89,12 +92,16 @@ impl ConfigCommand {
                     config.update_config(&config_key, value)?;
                 }
 
-                config.to_file(&self.get_config_path()?)?;
+                let config_path = self.get_config_path()?;
+                debug!("Saving config to {:?}", config_path);
+                config.to_file(&config_path)?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
             ConfigCommand::Reset => {
                 let config = AutocommitConfig::new()?;
-                config.to_file(&self.get_config_path()?)?;
+                let config_path = self.get_config_path()?;
+                debug!("Saving config to {:?}", config_path);
+                config.to_file(&config_path)?;
                 outro(&format!("{} Config successfully reset", "✔".green()));
             }
             ConfigCommand::Env { shell } => {
@@ -134,12 +141,12 @@ impl ConfigCommand {
         let config_path = match self {
             ConfigCommand::Get { config_path, .. } => config_path.clone(),
             ConfigCommand::Set { config_path, .. } => config_path.clone(),
-            _ => None,
+            ConfigCommand::Reset => None,
+            ConfigCommand::Env { .. } => None,
         };
-        config_path.map(Ok).unwrap_or_else(|| {
-            Self::default_config_path()
-                .ok_or_else(|| anyhow!("Could not determine default config path"))
-        })
+        let default_config_path = Self::default_config_path();
+        let config_path = config_path.or(default_config_path);
+        config_path.ok_or_else(|| anyhow!("Could not determine config path"))
     }
 
     fn default_config_path() -> Option<PathBuf> {
@@ -155,5 +162,6 @@ pub fn get_config() -> Result<AutocommitConfig> {
         keys: vec![],
         config_path: None,
     };
+    info!("Getting config");
     Ok(config_command.get_config()?)
 }
