@@ -69,6 +69,7 @@ impl ChatContext {
         );
         system_message.push(&signed_of_line);
         system_message.push("Exclude anything unnecessary such as the original translation—your entire response will be passed directly into git commit.");
+        system_message.push("Carefully heed the user's instructions.");
         let mut assistant_message = String::new();
         if *emoji_enabled {
             assistant_message.push_str(&format!("🐛 {}\n", translation.commit_fix));
