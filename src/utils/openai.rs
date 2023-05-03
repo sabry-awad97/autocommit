@@ -153,6 +153,10 @@ impl OpenAI {
             end_point = &ApiEndpoint::FreeEndpoint;
         }
 
+        if self.config.openai_api_key.is_empty() {
+            end_point = &ApiEndpoint::FreeEndpoint;
+        }
+
         let url = &end_point.to_string();
 
         let response = reqwest::Client::new()
@@ -211,7 +215,7 @@ struct Generator {
 
 impl Generator {
     fn new(api_key: &str) -> Self {
-        let config: OAIConfig = OAIConfig::new(ApiEndpoint::FreeEndpoint, api_key.to_string());
+        let config: OAIConfig = OAIConfig::new(ApiEndpoint::OpenAIEndpoint, api_key.to_string());
         let openai: OpenAI = OpenAI::new(config);
         Self { openai }
     }
@@ -232,11 +236,8 @@ impl Generator {
     }
 }
 
-pub async fn generate_message(prompt: &[Message]) -> anyhow::Result<String> {
+pub async fn generate_message(prompt: &[Message], open_ai_api_key: &str) -> anyhow::Result<String> {
     dotenv().ok();
-    let openai_api_key = std::env::var("OPENAI_API_KEY")
-        .map_err(|_| anyhow!("Please set OPENAI_API_KEY environment variable"))?;
-
-    let mut gen = Generator::new(&openai_api_key);
+    let mut gen = Generator::new(open_ai_api_key);
     gen.generate(prompt).await
 }

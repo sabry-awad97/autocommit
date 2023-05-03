@@ -88,9 +88,9 @@ impl ChatContext {
         context
     }
 
-    pub async fn generate_message(&mut self) -> anyhow::Result<String> {
+    pub async fn generate_message(&mut self, open_ai_api_key: &str) -> anyhow::Result<String> {
         debug!("Generating commit message...");
-        let commit_message = generate_message(self.get_messages()).await?;
+        let commit_message = generate_message(self.get_messages(), open_ai_api_key).await?;
         info!("Commit message generated: {}", &commit_message);
         self.add_message(MessageRole::Assistant, commit_message.to_owned());
         Ok(commit_message)

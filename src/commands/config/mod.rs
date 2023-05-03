@@ -68,11 +68,8 @@ impl ConfigCommand {
                         .filter_map(Result::ok)
                         .collect()
                 };
-                let filtered_config_values = config_values
-                    .into_iter()
-                    .filter(|(_, value)| !value.is_empty())
-                    .collect::<Vec<_>>();
-                for (key, value) in filtered_config_values {
+
+                for (key, value) in config_values {
                     println!("{} = {}", key.bold(), value.green());
                 }
             }

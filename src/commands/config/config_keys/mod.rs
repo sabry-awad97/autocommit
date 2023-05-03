@@ -13,6 +13,8 @@ pub use default_language::DefaultLanguage;
 
 #[derive(Debug, PartialEq, Display, EnumIter, EnumString)]
 pub enum ConfigKey {
+    #[strum(serialize = "open_ai_api_key")]
+    OpenAiApiKey,
     #[strum(serialize = "description")]
     DescriptionEnabled,
     #[strum(serialize = "emoji")]

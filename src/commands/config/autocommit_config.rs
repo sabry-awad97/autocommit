@@ -34,6 +34,7 @@ impl AutocommitConfig {
             default_commit_message: ConfigItem::new(OptionString::default()),
             default_push_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
             default_commit_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
+            open_ai_api_key: ConfigItem::new(OptionString::default()),
         };
         Ok(Self { config_data })
     }
