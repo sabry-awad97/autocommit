@@ -9,9 +9,9 @@ pub struct AutocommitService {
 }
 
 impl AutocommitService {
-    pub fn new(config_path: &PathBuf) -> anyhow::Result<Self> {
+    pub async fn new(config_path: &PathBuf) -> anyhow::Result<Self> {
         debug!("Loading config from {:?}", config_path);
-        let config = AutocommitConfig::from_file_or_new(config_path)?;
+        let config = AutocommitConfig::from_file_or_new(config_path).await?;
         Ok(Self { config })
     }
 
@@ -27,8 +27,8 @@ impl AutocommitService {
         self.config.get_config_values(keys)
     }
 
-    pub fn save_config_to(&self, path: &PathBuf) -> anyhow::Result<()> {
-        self.config.to_file(path)
+    pub async fn save_config_to(&self, path: &PathBuf) -> anyhow::Result<()> {
+        self.config.to_file(path).await
     }
 
     pub fn get_config(&self) -> &AutocommitConfig {

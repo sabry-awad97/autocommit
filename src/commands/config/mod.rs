@@ -45,14 +45,14 @@ pub enum ConfigCommand {
 }
 
 impl ConfigCommand {
-    fn get_service(&self) -> anyhow::Result<AutocommitService> {
+    async fn get_service(&self) -> anyhow::Result<AutocommitService> {
         let config_path = self.get_config_path()?;
-        let service = AutocommitService::new(&config_path)?;
+        let service = AutocommitService::new(&config_path).await?;
         Ok(service)
     }
 
-    pub fn run(&self) -> Result<()> {
-        let mut service = self.get_service()?;
+    pub async fn run(&self) -> Result<()> {
+        let mut service = self.get_service().await?;
         match self {
             ConfigCommand::Get { keys, .. } => {
                 let config_values = if keys.is_empty() {
@@ -91,18 +91,18 @@ impl ConfigCommand {
 
                 let config_path = self.get_config_path()?;
                 debug!("Saving config to {:?}", config_path);
-                service.save_config_to(&config_path)?;
+                service.save_config_to(&config_path).await?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
             ConfigCommand::Reset => {
                 let config_path = self.get_config_path()?;
-                let service = AutocommitService::new(&config_path)?;
+                let service = AutocommitService::new(&config_path).await?;
                 debug!("Saving config to {:?}", config_path);
-                service.save_config_to(&config_path)?;
+                service.save_config_to(&config_path).await?;
                 outro(&format!("{} Config successfully reset", "✔".green()));
             }
             ConfigCommand::Env { shell } => {
-                let config = self.get_service()?;
+                let config = self.get_service().await?;
                 let config_values =
                     config.get_config_values(&ConfigKey::iter().collect::<Vec<_>>());
 
@@ -154,11 +154,11 @@ impl ConfigCommand {
     }
 }
 
-pub fn get_service() -> Result<AutocommitService> {
+pub async fn get_service() -> Result<AutocommitService> {
     let config_command = ConfigCommand::Get {
         keys: vec![],
         config_path: None,
     };
     info!("Getting config");
-    Ok(config_command.get_service()?)
+    Ok(config_command.get_service().await?)
 }

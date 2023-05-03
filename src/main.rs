@@ -29,7 +29,7 @@ async fn main() {
     let cli = CLI::from_args();
 
     match cli.command {
-        Command::ConfigCommand(config) => match config.run() {
+        Command::ConfigCommand(config) => match config.run().await {
             Ok(_) => (),
             Err(e) => {
                 error!("{}", e);
@@ -37,7 +37,7 @@ async fn main() {
             }
         },
         Command::CommitCommand(mut commit) => {
-            let service = match get_service() {
+            let service = match get_service().await {
                 Ok(c) => c,
                 Err(e) => {
                     error!("{}", e);

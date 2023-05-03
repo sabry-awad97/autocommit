@@ -1,12 +1,12 @@
-use std::{
-    fs::{File, OpenOptions},
-    io::{Read, Write},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
+use tokio::{
+    fs::{File, OpenOptions},
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 use crate::{git::GitRepository, i18n::language::Language};
 
@@ -59,12 +59,14 @@ impl AutocommitConfig {
         Ok(())
     }
 
-    fn from_file(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
+    async fn from_file(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
         let mut file = File::open(path)
+            .await
             .with_context(|| format!("Failed to open config file: {}", path.display()))?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)
+            .await
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;
 
         if contents.is_empty() {
@@ -81,24 +83,26 @@ impl AutocommitConfig {
         Ok(config)
     }
 
-    pub fn to_file(&self, path: &PathBuf) -> anyhow::Result<()> {
+    pub async fn to_file(&self, path: &PathBuf) -> anyhow::Result<()> {
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .open(path)
+            .await
             .with_context(|| format!("Failed to create config file: {}", path.display()))?;
 
         let contents = toml::to_string(self)
             .with_context(|| format!("Failed to serialize config: {}", path.display()))?;
 
         file.write_all(contents.as_bytes())
+            .await
             .with_context(|| format!("Failed to write config file: {}", path.display()))?;
 
         Ok(())
     }
 
-    pub fn from_file_or_new(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
-        match AutocommitConfig::from_file(path) {
+    pub async fn from_file_or_new(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
+        match AutocommitConfig::from_file(path).await {
             Ok(config) => Ok(config),
             Err(error) => {
                 if let Some(io_error) = error
@@ -107,7 +111,7 @@ impl AutocommitConfig {
                 {
                     if io_error.kind() == std::io::ErrorKind::NotFound {
                         let new_config = AutocommitConfig::new()?;
-                        new_config.to_file(path)?;
+                        new_config.to_file(path).await?;
                         Ok(new_config)
                     } else {
                         Err(error)
