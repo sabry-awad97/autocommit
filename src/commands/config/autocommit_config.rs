@@ -22,7 +22,7 @@ pub struct AutocommitConfig {
 }
 
 impl AutocommitConfig {
-    pub fn new() -> anyhow::Result<Self> {
+    fn new() -> anyhow::Result<Self> {
         let name = GitRepository::get_git_name()?;
         let email = GitRepository::get_git_email()?;
         let config_data = ConfigData {
@@ -38,7 +38,7 @@ impl AutocommitConfig {
         Ok(Self { config_data })
     }
 
-    pub fn update_config_from_env(config: &mut AutocommitConfig) -> anyhow::Result<()> {
+    fn update_config_from_env(config: &mut AutocommitConfig) -> anyhow::Result<()> {
         let env_vars = ConfigKey::iter()
             .map(|key| {
                 (
@@ -57,7 +57,7 @@ impl AutocommitConfig {
         Ok(())
     }
 
-    pub fn from_file(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
+    fn from_file(path: &PathBuf) -> anyhow::Result<AutocommitConfig> {
         let mut file = File::open(path)
             .with_context(|| format!("Failed to open config file: {}", path.display()))?;
 

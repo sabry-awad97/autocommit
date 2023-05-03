@@ -9,11 +9,12 @@ use crate::utils::outro;
 
 pub use autocommit_config::AutocommitConfig;
 
-use self::config_keys::ConfigKey;
+use self::{config_keys::ConfigKey, config_service::AutocommitService};
 
 mod autocommit_config;
 mod config_data;
 mod config_keys;
+mod config_service;
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigCommand {
@@ -44,25 +45,24 @@ pub enum ConfigCommand {
 }
 
 impl ConfigCommand {
-    fn get_config(&self) -> Result<AutocommitConfig> {
+    fn get_service(&self) -> anyhow::Result<AutocommitService> {
         let config_path = self.get_config_path()?;
-        debug!("Loading config from {:?}", config_path);
-        let config = AutocommitConfig::from_file_or_new(&config_path)?;
-        Ok(config)
+        let service = AutocommitService::new(&config_path)?;
+        Ok(service)
     }
 
     pub fn run(&self) -> Result<()> {
-        let mut config = self.get_config()?;
+        let mut service = self.get_service()?;
         match self {
             ConfigCommand::Get { keys, .. } => {
                 let config_values = if keys.is_empty() {
                     let all_keys = ConfigKey::iter().collect::<Vec<_>>();
-                    config.get_config_values(&all_keys)
+                    service.get_config_values(&all_keys)
                 } else {
                     keys.iter()
                         .map(|key| {
                             ConfigKey::from_str(key).map(|config_key| {
-                                (key.to_string(), config.get_config_value(&config_key))
+                                (key.to_string(), service.get_config_value(&config_key))
                             })
                         })
                         .filter_map(Result::ok)
@@ -89,23 +89,23 @@ impl ConfigCommand {
                     let config_key = ConfigKey::from_str(key)
                         .map_err(|_| anyhow!("Unsupported config key: {}", key))?;
 
-                    config.update_config(&config_key, value)?;
+                    service.update_config(&config_key, value)?;
                 }
 
                 let config_path = self.get_config_path()?;
                 debug!("Saving config to {:?}", config_path);
-                config.to_file(&config_path)?;
+                service.save_config_to(&config_path)?;
                 outro(&format!("{} Config successfully set", "✔".green()));
             }
             ConfigCommand::Reset => {
-                let config = AutocommitConfig::new()?;
                 let config_path = self.get_config_path()?;
+                let service = AutocommitService::new(&config_path)?;
                 debug!("Saving config to {:?}", config_path);
-                config.to_file(&config_path)?;
+                service.save_config_to(&config_path)?;
                 outro(&format!("{} Config successfully reset", "✔".green()));
             }
             ConfigCommand::Env { shell } => {
-                let config = self.get_config()?;
+                let config = self.get_service()?;
                 let config_values =
                     config.get_config_values(&ConfigKey::iter().collect::<Vec<_>>());
 
@@ -157,11 +157,11 @@ impl ConfigCommand {
     }
 }
 
-pub fn get_config() -> Result<AutocommitConfig> {
+pub fn get_service() -> Result<AutocommitService> {
     let config_command = ConfigCommand::Get {
         keys: vec![],
         config_path: None,
     };
     info!("Getting config");
-    Ok(config_command.get_config()?)
+    Ok(config_command.get_service()?)
 }

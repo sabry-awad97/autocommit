@@ -6,7 +6,7 @@ mod git;
 mod i18n;
 mod utils;
 
-use commands::{get_config, Command};
+use commands::{get_service, Command};
 use log::{error, info};
 use utils::{intro, outro};
 
@@ -37,7 +37,7 @@ async fn main() {
             }
         },
         Command::CommitCommand(mut commit) => {
-            let config = match get_config() {
+            let service = match get_service() {
                 Ok(c) => c,
                 Err(e) => {
                     error!("{}", e);
@@ -54,7 +54,7 @@ async fn main() {
                 }
             };
 
-            match commit.run(&config).await {
+            match commit.run(service.get_config()).await {
                 Ok(_) => (),
                 Err(e) => {
                     error!("{}", e);
