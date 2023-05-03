@@ -24,7 +24,7 @@ pub fn outro(message: &str) {
 pub fn intro(title: &str) {
     let s_bar_start = get_unicode_string("┌", "T");
     println!(
-        "{}  {}\n",
+        "{}  {}",
         s_bar_start.color(Color::TrueColor {
             r: 128,
             g: 128,
