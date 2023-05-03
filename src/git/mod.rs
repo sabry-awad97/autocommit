@@ -119,7 +119,7 @@ impl GitRepository {
         let lock_files = files
             .iter()
             .filter(|file| file.contains(".lock") || file.contains("-lock."))
-            .map(|s| format!("{}{}", ":(exclude)".red(), s))
+            .map(|s| format!("  {} {}", ":(exclude)".red(), s))
             .collect::<Vec<_>>();
 
         if !lock_files.is_empty() {
