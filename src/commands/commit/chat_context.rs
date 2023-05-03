@@ -4,9 +4,9 @@ use crate::{
     i18n::{self, language::Language},
     utils::{Message, MessageRole},
 };
+use anyhow::anyhow;
 use lazy_static::lazy_static;
 use log::{debug, info};
-
 pub struct ChatContext {
     messages: Vec<Message>,
 }
@@ -88,9 +88,23 @@ impl ChatContext {
         context
     }
 
-    pub async fn generate_message(&mut self, open_ai_api_key: &str) -> anyhow::Result<String> {
+    pub async fn generate_message(&mut self, config: &AutocommitConfig) -> anyhow::Result<String> {
+        let open_ai_api_key = config
+            .config_data
+            .open_ai_api_key
+            .get_value_ref()
+            .get_inner_value();
+
+        if open_ai_api_key.is_none() {
+            return Err(anyhow!("Please set your OpenAI API key in the autocommit config file or as an environment variable"));
+        }
+
+        let open_ai_api_key = open_ai_api_key.unwrap();
+        let api_host = &config.config_data.api_host.get_value_ref();
+
         debug!("Generating commit message...");
-        let commit_message = generate_message(self.get_messages(), open_ai_api_key).await?;
+        let commit_message =
+            generate_message(self.get_messages(), &open_ai_api_key, api_host).await?;
         info!("Commit message generated: {}", &commit_message);
         self.add_message(MessageRole::Assistant, commit_message.to_owned());
         Ok(commit_message)

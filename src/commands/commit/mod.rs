@@ -266,18 +266,6 @@ impl CommitCommand {
         config: &AutocommitConfig,
         content: &str,
     ) -> anyhow::Result<String> {
-        let open_ai_api_key = config
-            .config_data
-            .open_ai_api_key
-            .get_value_ref()
-            .get_inner_value();
-
-        if open_ai_api_key.is_none() {
-            return Err(anyhow!("Please set your OpenAI API key in the autocommit config file or as an environment variable"));
-        }
-
-        let open_ai_api_key = open_ai_api_key.unwrap();
-
         const GENERATING_MESSAGE: &str = "Generating the commit message...";
         let mut commit_spinner = spinner();
         let commit_message;
@@ -299,7 +287,7 @@ impl CommitCommand {
                 commit_spinner.start(GENERATING_MESSAGE);
                 let mut chat_context = ChatContext::get_initial_context(config);
                 chat_context.add_message(MessageRole::User, content.to_owned());
-                commit_message = chat_context.generate_message(&open_ai_api_key).await?;
+                commit_message = chat_context.generate_message(config).await?;
                 commit_spinner.stop("📝 Commit message generated successfully");
             }
         }

@@ -6,23 +6,6 @@ use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ApiEndpoint {
-    OpenAIEndpoint,
-    FreeEndpoint,
-}
-
-impl fmt::Display for ApiEndpoint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ApiEndpoint::OpenAIEndpoint => write!(f, "https://api.openai.com/v1/chat/completions"),
-            ApiEndpoint::FreeEndpoint => {
-                write!(f, "https://free.churchless.tech/v1/chat/completions")
-            }
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OAIModel {
     GPT3Turbo,
@@ -122,14 +105,14 @@ impl OAIRequest {
 }
 
 pub struct OAIConfig {
-    end_point: ApiEndpoint,
+    api_host: String,
     openai_api_key: String,
 }
 
 impl OAIConfig {
-    fn new(end_point: ApiEndpoint, openai_api_key: String) -> Self {
+    fn new(api_host: String, openai_api_key: String) -> Self {
         Self {
-            end_point,
+            api_host,
             openai_api_key,
         }
     }
@@ -145,22 +128,10 @@ impl OpenAI {
     }
 
     async fn send_request(&mut self, chat_request: &OAIRequest) -> Result<OAIResponse, Error> {
-        let mut end_point = &self.config.end_point;
-
-        let model = &chat_request.model;
-
-        if model.to_string().contains("gpt-4") {
-            end_point = &ApiEndpoint::FreeEndpoint;
-        }
-
-        if self.config.openai_api_key.is_empty() {
-            end_point = &ApiEndpoint::FreeEndpoint;
-        }
-
-        let url = &end_point.to_string();
+        let url = self.config.api_host.to_string() + "/v1/chat/completions";
 
         let response = reqwest::Client::new()
-            .post(url)
+            .post(&url)
             .header(
                 reqwest::header::CONTENT_TYPE,
                 HeaderValue::from_static("application/json"),
@@ -169,7 +140,7 @@ impl OpenAI {
             .json(&chat_request)
             .send()
             .await
-            .with_context(|| format!("Failed to send request to {}", url))?;
+            .with_context(|| format!("Failed to send request to {}", &url))?;
 
         match response.status() {
             StatusCode::OK => {
@@ -214,8 +185,8 @@ struct Generator {
 }
 
 impl Generator {
-    fn new(api_key: &str) -> Self {
-        let config: OAIConfig = OAIConfig::new(ApiEndpoint::OpenAIEndpoint, api_key.to_string());
+    fn new(api_key: &str, api_host: &str) -> Self {
+        let config: OAIConfig = OAIConfig::new(api_host.to_owned(), api_key.to_string());
         let openai: OpenAI = OpenAI::new(config);
         Self { openai }
     }
@@ -236,8 +207,12 @@ impl Generator {
     }
 }
 
-pub async fn generate_message(prompt: &[Message], open_ai_api_key: &str) -> anyhow::Result<String> {
+pub async fn generate_message(
+    prompt: &[Message],
+    open_ai_api_key: &str,
+    api_host: &str,
+) -> anyhow::Result<String> {
     dotenv().ok();
-    let mut gen = Generator::new(open_ai_api_key);
+    let mut gen = Generator::new(open_ai_api_key, api_host);
     gen.generate(prompt).await
 }

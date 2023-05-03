@@ -35,6 +35,7 @@ impl AutocommitConfig {
             default_push_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
             default_commit_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
             open_ai_api_key: ConfigItem::new(OptionString::default()),
+            api_host: ConfigItem::new(String::from("https://api.openai.com")),
         };
         Ok(Self { config_data })
     }
