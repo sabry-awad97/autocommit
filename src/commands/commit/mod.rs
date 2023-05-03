@@ -60,7 +60,7 @@ impl CommitCommand {
             }
 
             let mut staged_spinner = spinner();
-            staged_spinner.start("Counting staged files");
+            staged_spinner.start("Counting staged files...");
             tokio::time::sleep(Duration::from_millis(500)).await;
             if staged_files.is_empty() {
                 staged_spinner.stop("No files are staged");
@@ -413,7 +413,6 @@ impl CommitCommand {
         };
 
         if push_confirmed_by_user {
-            outro(&format!("Changes pushed to remote repository {}", remote));
             Ok(true)
         } else {
             outro("Push cancelled, exiting...");
