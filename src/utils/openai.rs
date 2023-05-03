@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
-use dotenv::dotenv;
 use log::{debug, info};
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -212,7 +211,6 @@ pub async fn generate_message(
     open_ai_api_key: &str,
     api_host: &str,
 ) -> anyhow::Result<String> {
-    dotenv().ok();
     let mut gen = Generator::new(open_ai_api_key, api_host);
     gen.generate(prompt).await
 }
