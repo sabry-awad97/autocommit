@@ -10,7 +10,10 @@ use ignore::{
 };
 use log::error;
 use prettytable::{Cell, Row, Table};
+mod commit_table;
 use tokio::process::Command;
+
+use self::commit_table::CommitSummary;
 mod tests;
 
 pub struct GitRepository {}
@@ -196,7 +199,11 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn get_commit_summary_table(message: &str, name: &str, email: &str) -> anyhow::Result<Table> {
+    pub async fn get_commit_summary_table(
+        message: &str,
+        name: &str,
+        email: &str,
+    ) -> anyhow::Result<Table> {
         let repo = Repository::open_from_env()?;
         let tree_id = repo.index()?.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
@@ -218,42 +225,19 @@ impl GitRepository {
         let commit = repo.find_commit(commit_id)?;
         let branch_name = head.name().unwrap_or("Unknown");
         let commit_count = Self::get_commit_count(&repo)?;
-        let (files_changes, insertions, deletions) = Self::get_short_stat()?;
+        let (files_changed, insertions, deletions) = Self::get_short_stat()?;
         let commit_hash = commit.id().to_string();
-        // Display a table of commit information
-        let mut table = Table::new();
-        table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
-        table.set_titles(Row::new(vec![
-            Cell::new("Commit Information").style_spec("bFy")
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new("Branch"),
-            Cell::new("Commit Hash"),
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new(branch_name),
-            Cell::new(&commit_hash),
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new("Author"),
-            Cell::new("Email"),
-            Cell::new("Commit Count"),
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new(&name),
-            Cell::new(&email),
-            Cell::new(&commit_count.to_string()),
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new("Files Changed"),
-            Cell::new("Insertions"),
-            Cell::new("Deletions"),
-        ]));
-        table.add_row(Row::new(vec![
-            Cell::new(&files_changes.to_string()),
-            Cell::new(&insertions.to_string()),
-            Cell::new(&deletions.to_string()),
-        ]));
+        let commit_summary = CommitSummary {
+            branch_name: branch_name.to_string(),
+            commit_hash,
+            author_name: name.to_string(),
+            author_email: email.to_string(),
+            commit_count,
+            files_changed,
+            insertions,
+            deletions,
+        };
+        let table = commit_summary.get_table()?;
 
         Ok(table)
     }
@@ -419,5 +403,4 @@ impl GitRepository {
 
         Ok((files_changed, insertions, deletions))
     }
-
 }
