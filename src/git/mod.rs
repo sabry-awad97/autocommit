@@ -303,8 +303,9 @@ impl GitRepository {
 
         let status_lines = String::from_utf8_lossy(&status_output.stdout);
         if status_lines.trim().is_empty() {
-            return Ok("".to_string());
+            return Err(anyhow!("No changes to commit."));
         }
+        
         let mut table = Table::new();
         table.set_format(*consts::FORMAT_BOX_CHARS);
         table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
