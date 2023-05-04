@@ -228,12 +228,10 @@ impl GitRepository {
         table.add_row(Row::new(vec![
             Cell::new("Branch"),
             Cell::new("Commit Hash"),
-            Cell::new("Message"),
         ]));
         table.add_row(Row::new(vec![
             Cell::new(branch_name),
             Cell::new(&commit_hash),
-            Cell::new(message),
         ]));
         table.add_row(Row::new(vec![
             Cell::new("Author"),
