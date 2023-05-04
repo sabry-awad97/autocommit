@@ -351,4 +351,18 @@ impl GitRepository {
 
         Ok(table.to_string())
     }
+
+    pub fn count_commits() -> anyhow::Result<usize> {
+        let repo =
+            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
+
+        let head = repo.head()?;
+        let head_oid = head
+            .target()
+            .ok_or_else(|| anyhow!("HEAD is not a direct reference"))?;
+        let mut revwalk = repo.revwalk()?;
+        revwalk.push(head_oid)?;
+        let count = revwalk.count();
+        Ok(count)
+    }
 }
