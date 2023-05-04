@@ -168,7 +168,7 @@ impl GitRepository {
                     anyhow!("Failed to add file '{}' to the Git index: {}", file, err)
                 })?;
             } else {
-                eprintln!("  ⏭️ {} '{}'", "Skipping directory".yellow(), file);
+                eprintln!("  {} '{}'", "Skipping directory".yellow(), file);
             }
         }
 
@@ -205,6 +205,16 @@ impl GitRepository {
         email: &str,
     ) -> anyhow::Result<Table> {
         let repo = Repository::open_from_env()?;
+        let status = repo.statuses(None)?;
+        if !status.is_empty() {
+            let mut message = String::from("The changes are already committed manually\n");
+            for entry in status.iter() {
+                if let Some(path) = entry.path() {
+                    message.push_str(&format!("{:?}: {}\n", entry.status(), path));
+                }
+            }
+            return Err(anyhow::anyhow!(message));
+        }
         let tree_id = repo.index()?.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
         let head = repo.head()?;
