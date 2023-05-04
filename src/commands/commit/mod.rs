@@ -74,7 +74,7 @@ impl CommitCommand {
                 if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
                     self.stage_all = true;
                     continue;
-                } else if changed_files.len() > 0 {
+                } else if !changed_files.is_empty() {
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
                     GitRepository::git_add(&files).await?;
                     self.stage_all = false;
@@ -153,7 +153,7 @@ impl CommitCommand {
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
         GitRepository::git_checkout_new_branch(self.branch_name.clone()).await?;
-        let git_commit_output = GitRepository::git_commit(&commit_message).await?;
+        let git_commit_output = GitRepository::git_commit(commit_message).await?;
         GitRepository::git_add_all().await?;
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         outro(&git_commit_output);
@@ -167,7 +167,7 @@ impl CommitCommand {
             "Pulling changes from remote repository {}...",
             remote.green().bold()
         ));
-        GitRepository::git_pull(&remote).await?;
+        GitRepository::git_pull(remote).await?;
         pull_spinner.stop(&format!(
             "{} Changes pulled successfully from remote repository {}.",
             "✔".green(),
@@ -190,7 +190,7 @@ impl CommitCommand {
             "Pushing changes to remote repository {}...",
             remote.green().bold()
         ));
-        GitRepository::git_push(&remote, branch_name).await?;
+        GitRepository::git_push(remote, branch_name).await?;
         push_spinner.stop(&format!(
             "{} Changes pushed successfully to remote repository {}.",
             "✔".green(),
@@ -223,7 +223,7 @@ impl CommitCommand {
                         String::from("Suggest a professional git commit message with gitmoji\n");
                     new_content.push_str("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.");
 
-                    new_content.push_str(&staged_diff);
+                    new_content.push_str(staged_diff);
                     message = self
                         .generate_autocommit_message(config, &new_content)
                         .await?;
@@ -233,7 +233,7 @@ impl CommitCommand {
             }
 
             let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt(format!("Do you want to commit these changes?"))
+                .with_prompt("Do you want to commit these changes?")
                 .default(true)
                 .interact_opt()?;
 
@@ -344,7 +344,7 @@ impl CommitCommand {
             Ok(Some(remotes[items[0]].clone()))
         } else {
             outro("No remote repository selected, exiting...");
-            return Ok(None);
+            Ok(None)
         }
     }
 
@@ -356,7 +356,7 @@ impl CommitCommand {
                 "Select the files you want to add to the commit ({} files changed):",
                 changed_files.len().to_string().green()
             ))
-            .items(&changed_files)
+            .items(changed_files)
             .interact_opt()?;
 
         if let Some(items) = selected_items {
