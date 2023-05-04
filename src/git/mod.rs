@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{build::CheckoutBuilder, Repository, Status, StatusOptions};
+use git2::{Repository, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -17,17 +17,34 @@ pub struct GitRepository {}
 
 impl GitRepository {
     pub async fn assert_git_repo() -> anyhow::Result<()> {
-        Repository::open_from_env().map_err(|e| {
-            anyhow!(
-                "The current working directory is not a Git repository: {}",
-                e
-            )
-        })?;
+        let output = Command::new("git")
+            .arg("rev-parse")
+            .arg("--is-inside-work-tree")
+            .output()
+            .await
+            .map_err(|e| {
+                anyhow!(
+                    "Command 'git rev-parse --is-inside-work-tree' failed: {}",
+                    e
+                )
+            })?;
+
+        if !output.status.success() {
+            return Err(anyhow!(
+                "The current working directory is not a Git repository"
+            ));
+        }
+
         Ok(())
     }
 
     pub fn get_changed_files() -> anyhow::Result<Vec<String>> {
-        let repo = Repository::open_from_env()?;
+        let repo = Repository::open_from_env().map_err(|err| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                err
+            )
+        })?;
         let mut opts = StatusOptions::new();
         opts.include_untracked(true);
         let statuses = repo.statuses(Some(&mut opts))?;
@@ -78,7 +95,12 @@ impl GitRepository {
     }
 
     pub fn get_staged_files() -> anyhow::Result<Vec<String>> {
-        let repo = Repository::open_from_env()?;
+        let repo = Repository::open_from_env().map_err(|err| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                err
+            )
+        })?;
         let mut opts = StatusOptions::new();
         opts.include_untracked(false);
         let statuses = repo.statuses(Some(&mut opts))?;
@@ -138,20 +160,36 @@ impl GitRepository {
     }
 
     pub fn git_add(files: &[String]) -> anyhow::Result<()> {
-        let repo = Repository::open_from_env()?;
-        let mut index = repo.index()?;
+        let repo = Repository::open_from_env().map_err(|err| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                err
+            )
+        })?;
+        let mut index = repo
+            .index()
+            .map_err(|err| anyhow!("Failed to open the Git index: {}", err))?;
 
         for file in files {
-            index.add_path(Path::new(file))?;
+            index.add_path(Path::new(file)).map_err(|err| {
+                anyhow!("Failed to add file '{}' to the Git index: {}", file, err)
+            })?;
         }
 
-        index.write()?;
+        index
+            .write()
+            .map_err(|err| anyhow!("Failed to write the Git index: {}", err))?;
 
         Ok(())
     }
 
     pub fn git_add_all() -> anyhow::Result<()> {
-        let repo = Repository::open_from_env()?;
+        let repo = Repository::open_from_env().map_err(|err| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                err
+            )
+        })?;
         let mut index = repo.index()?;
 
         index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)?;
@@ -232,7 +270,12 @@ impl GitRepository {
     }
 
     pub fn get_git_remotes() -> anyhow::Result<Vec<String>> {
-        let repo = Repository::open_from_env()?;
+        let repo = Repository::open_from_env().map_err(|err| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                err
+            )
+        })?;
         let remotes = repo
             .remotes()?
             .into_iter()
@@ -257,16 +300,23 @@ impl GitRepository {
         Ok(email)
     }
 
-    pub fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
-        let repo = Repository::open_from_env()?;
-        let head = repo
-            .head()?
-            .target()
-            .ok_or_else(|| anyhow!("Could not get target of HEAD"))?;
-        let commit = repo.find_commit(head)?;
-        let branch = repo.branch(branch_name, &commit, false)?;
-        repo.set_head(branch.name().unwrap().unwrap())?;
-        repo.checkout_head(Some(CheckoutBuilder::default().force()))?;
+    pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
+        let mut cmd = Command::new("git");
+        cmd.arg("checkout").arg("-b").arg(branch_name);
+        let output = cmd.output().await?;
+
+        if !output.status.success() {
+            let output: String = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let error_message =
+                format!("Failed to checkout new branch {}: {}", branch_name, output);
+            error!("{}", error_message);
+            anyhow::bail!(
+                "Failed to checkout new branch {}: {}",
+                branch_name,
+                error_message
+            );
+        }
+
         Ok(())
     }
 
