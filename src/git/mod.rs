@@ -3,7 +3,10 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{build::CheckoutBuilder, Repository, Status, StatusOptions};
+use git2::{
+    build::CheckoutBuilder, BranchType, PushOptions, RemoteCallbacks, Repository, Status,
+    StatusOptions,
+};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -208,26 +211,31 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_push(remote: &str, branch: Option<String>) -> anyhow::Result<()> {
-        let mut command = Command::new("git");
-        command.arg("push").arg("--verbose").arg(remote);
-        if let Some(branch_name) = branch {
-            command.arg(branch_name);
-        }
-        let output = command.output().await?;
+    pub fn git_push(remote: &str, branch: Option<String>) -> anyhow::Result<()> {
+        let repo = Repository::open_from_env()?;
 
-        if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr);
-            error!(
-                "Failed to push changes to remote repository {}: {}",
-                remote, error_message
-            );
-            return Err(anyhow!(
-                "Failed to push changes to remote repository {}: {}",
-                remote,
-                error_message
-            ));
-        }
+        let mut remote = repo.find_remote(remote)?;
+        let mut callbacks = RemoteCallbacks::new();
+        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            let username = username_from_url.unwrap_or("git");
+            git2::Cred::ssh_key_from_agent(username)
+        });
+
+        let mut push_options = PushOptions::new();
+        push_options.remote_callbacks(callbacks);
+
+        let branch_name = branch.unwrap_or_else(|| {
+            let head = repo.head().unwrap();
+            let shorthand = head.shorthand().unwrap();
+            shorthand.to_string()
+        });
+
+        let branch = repo.find_branch(&branch_name, BranchType::Local)?;
+        let branch_ref = branch.into_reference();
+        let push_refs = vec![branch_ref.name().unwrap().to_owned()];
+
+        remote.push(&push_refs, Some(&mut push_options))?;
+
         Ok(())
     }
 
