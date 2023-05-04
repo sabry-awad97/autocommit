@@ -1,9 +1,9 @@
-use std::{path::Path, process::Output};
+use std::path::Path;
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Status, StatusOptions};
+use git2::{Repository, Signature, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -161,23 +161,28 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_commit(message: &str) -> anyhow::Result<String> {
-        let output = Command::new("git")
-            .arg("commit")
-            .arg("-m")
-            .arg(message)
-            .output()
-            .await
-            .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
-
-        if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            error!("Failed to commit changes: {}", error_message);
-            return Err(anyhow!(error_message));
-        }
-
-        let commit_output = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        Ok(commit_output)
+    pub fn git_commit(message: &str) -> anyhow::Result<String> {
+        let repo = Repository::open_from_env()?;
+        let tree_id = repo.index()?.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        let name = Self::get_git_user_name()?;
+        let email = Self::get_git_user_email()?;
+        let head = repo.head()?;
+        let head_commit = head.peel_to_commit();
+        let signature = Signature::now(&name, &email)?;
+        let commit_id = if let Some(head_commit) = head_commit.ok() {
+            repo.commit(
+                Some("HEAD"),
+                &signature,
+                &signature,
+                message,
+                &tree,
+                &[&head_commit],
+            )?
+        } else {
+            repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])?
+        };
+        Ok(commit_id.to_string())
     }
 
     pub async fn git_pull(remote: &str) -> anyhow::Result<()> {
@@ -243,22 +248,18 @@ impl GitRepository {
         Ok(remotes)
     }
 
-    pub fn get_git_email() -> anyhow::Result<String> {
-        let output = std::process::Command::new("git")
-            .arg("config")
-            .arg("user.email")
-            .output()?;
-
-        parse_output(output)
+    pub fn get_git_user_email() -> anyhow::Result<String> {
+        let repo = Repository::open_from_env()?;
+        let config = repo.config()?;
+        let email = config.get_string("user.email")?;
+        Ok(email)
     }
 
-    pub fn get_git_name() -> anyhow::Result<String> {
-        let output = std::process::Command::new("git")
-            .arg("config")
-            .arg("user.name")
-            .output()?;
-
-        parse_output(output)
+    pub fn get_git_user_name() -> anyhow::Result<String> {
+        let repo = Repository::open_from_env()?;
+        let config = repo.config()?;
+        let email = config.get_string("user.name")?;
+        Ok(email)
     }
 
     pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
@@ -303,17 +304,5 @@ impl GitRepository {
             table.add_row(Row::new(vec![Cell::new(status), Cell::new(file)]));
         }
         Ok(table.to_string())
-    }
-}
-
-fn parse_output(output: Output) -> anyhow::Result<String> {
-    if output.status.success() {
-        Ok(String::from_utf8(output.stdout)?.trim().to_owned())
-    } else {
-        Err(anyhow!(
-            "Command failed with exit code {}: {}",
-            output.status,
-            String::from_utf8(output.stderr)?.trim()
-        ))
     }
 }
