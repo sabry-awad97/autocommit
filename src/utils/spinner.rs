@@ -10,10 +10,10 @@ pub struct Spinner {
 }
 
 impl Spinner {
-    pub fn new(message: &str) -> Self {
+    pub fn new(message: &str, tick_rate: u64) -> Self {
         let pb = ProgressBar::new_spinner();
         pb.set_message(message.to_string());
-        pb.enable_steady_tick(Duration::from_millis(50));
+        pb.enable_steady_tick(Duration::from_millis(tick_rate));
         pb.set_style(
             ProgressStyle::default_spinner()
                 .tick_chars("◐◓◑◒")
@@ -54,10 +54,11 @@ impl Spinner {
                 .unwrap(),
         );
         println!("{}", s_bar);
-        self.pb.finish_with_message(format!("{} (elapsed time: {})", message, elapsed_str));
+        self.pb
+            .finish_with_message(format!("{} (elapsed time: {})", message, elapsed_str));
     }
 }
 
 pub fn spinner() -> Spinner {
-    Spinner::new("")
+    Spinner::new("", 50)
 }
