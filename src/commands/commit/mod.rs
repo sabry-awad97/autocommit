@@ -61,7 +61,7 @@ impl CommitCommand {
             // Prompt the user if they want to see the Git status
             let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt("Do you want to see the Git status before committing?")
-                .default(true)
+                .default(false)
                 .interact_opt()?
                 .unwrap_or(false);
 

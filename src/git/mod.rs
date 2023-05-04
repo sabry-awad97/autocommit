@@ -307,9 +307,9 @@ impl GitRepository {
         table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
         for line in status_lines.lines() {
             let mut cells = line.split_whitespace();
-            let file = cells.next().unwrap_or("");
             let status = cells.next().unwrap_or("");
-            table.add_row(Row::new(vec![Cell::new(file), Cell::new(status)]));
+            let file = cells.next().unwrap_or("");
+            table.add_row(Row::new(vec![Cell::new(status), Cell::new(file)]));
         }
         Ok(table.to_string())
     }
