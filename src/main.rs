@@ -16,7 +16,7 @@ use utils::{intro, outro};
     version = "1.0.0",
     about = "A powerful CLI tool that helps you create professional and meaningful commits with ease, using AI to generate impressive commit messages in seconds. Take control of your code history and make it shine with autocommit!"
 )]
-struct CLI {
+struct Cli {
     #[structopt(subcommand)]
     command: Command,
 }
@@ -26,7 +26,7 @@ async fn main() {
     println!("{esc}c", esc = 27 as char);
     intro("Autocommit");
 
-    let cli = CLI::from_args();
+    let cli = Cli::from_args();
 
     match cli.command {
         Command::ConfigCommand(config) => match config.run().await {
