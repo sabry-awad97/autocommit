@@ -1,8 +1,9 @@
-use std::process::Output;
+use std::{env, process::Output};
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
+use git2::{Repository, RepositoryOpenFlags};
 use log::error;
 use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
@@ -12,24 +13,12 @@ pub struct GitRepository {}
 
 impl GitRepository {
     pub async fn assert_git_repo() -> anyhow::Result<()> {
-        let output = Command::new("git")
-            .arg("rev-parse")
-            .arg("--is-inside-work-tree")
-            .output()
-            .await
-            .map_err(|e| {
-                anyhow!(
-                    "Command 'git rev-parse --is-inside-work-tree' failed: {}",
-                    e
-                )
-            })?;
-
-        if !output.status.success() {
-            return Err(anyhow!(
-                "The current working directory is not a Git repository"
-            ));
-        }
-
+        Repository::open_from_env().map_err(|e| {
+            anyhow!(
+                "The current working directory is not a Git repository: {}",
+                e
+            )
+        })?;
         Ok(())
     }
 
