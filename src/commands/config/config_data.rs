@@ -19,6 +19,7 @@ pub struct ConfigData {
     pub default_commit_message: ConfigItem<OptionString>,
     pub open_ai_api_key: ConfigItem<OptionString>,
     pub api_host: ConfigItem<String>,
+    pub open_ai_model: ConfigItem<String>,
     pub default_push_behavior: ConfigItem<DefaultBehaviorOption>,
     pub default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
 }
@@ -42,6 +43,7 @@ impl<'de> Deserialize<'de> for ConfigData {
             default_push_behavior: ConfigItem<DefaultBehaviorOption>,
             default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
             api_host: ConfigItem<String>,
+            open_ai_model: ConfigItem<String>,
         }
 
         let inner = InnerConfigData::deserialize(deserializer)?;
@@ -56,6 +58,7 @@ impl<'de> Deserialize<'de> for ConfigData {
             default_commit_behavior: inner.default_commit_behavior,
             open_ai_api_key: inner.open_ai_api_key,
             api_host: inner.api_host,
+            open_ai_model: inner.open_ai_model,
         })
     }
 }
@@ -85,6 +88,7 @@ impl ConfigData {
             ConfigKey::DefaultCommitBehavior => self.default_commit_behavior.update(value)?,
             ConfigKey::OpenAiApiKey => self.open_ai_api_key.update(value)?,
             ConfigKey::ApiHost => self.api_host.update(value)?,
+            ConfigKey::OpenAiModel => self.open_ai_model.update(value)?,
         }
         Ok(())
     }
@@ -101,6 +105,7 @@ impl ConfigData {
             ConfigKey::DefaultCommitBehavior => self.default_push_behavior.get_value(),
             ConfigKey::OpenAiApiKey => self.open_ai_api_key.get_value(),
             ConfigKey::ApiHost => self.api_host.get_value(),
+            ConfigKey::OpenAiModel => self.open_ai_model.get_value(),
         }
     }
 }

@@ -15,6 +15,8 @@ pub use option_string::OptionString;
 pub enum ConfigKey {
     #[strum(serialize = "open_ai_api_key")]
     OpenAiApiKey,
+    #[strum(serialize = "open_ai_model")]
+    OpenAiModel,
     #[strum(serialize = "api_host")]
     ApiHost,
     #[strum(serialize = "description")]
