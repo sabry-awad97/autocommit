@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 
 fn is_unicode_supported() -> bool {
     if cfg!(windows) {
-        return env::var("CI").is_ok()
+        env::var("CI").is_ok()
             || env::var("WT_SESSION").is_ok()
             || env::var("TERMINUS_SUBLIME").is_ok()
             || env::var("ConEmuTask")
@@ -18,9 +18,9 @@ fn is_unicode_supported() -> bool {
                 .unwrap_or(false)
             || env::var("TERMINAL_EMULATOR")
                 .map(|s| s == "JetBrains-JediTerm")
-                .unwrap_or(false);
+                .unwrap_or(false)
     } else {
-        return env::var("TERM").map(|s| s != "linux").unwrap_or(true);
+        env::var("TERM").map(|s| s != "linux").unwrap_or(true)
     }
 }
 
