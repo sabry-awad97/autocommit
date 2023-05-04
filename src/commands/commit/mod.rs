@@ -183,7 +183,7 @@ impl CommitCommand {
         commit_spinner.start(COMMITTING_CHANGES);
 
         if let Some(branch_name) = &self.branch_name {
-            GitRepository::git_checkout_new_branch(branch_name)?;
+            GitRepository::git_checkout_new_branch(branch_name).await?;
             GitRepository::git_add_all()?;
         }
         let name = config.config_data.name.get_value_ref();
