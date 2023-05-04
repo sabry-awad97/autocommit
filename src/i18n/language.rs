@@ -9,7 +9,7 @@ pub enum Language {
 impl std::fmt::Display for Language {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Language::English => write!(f, "{}", "english"),
+            Language::English => write!(f, "english"),
         }
     }
 }
