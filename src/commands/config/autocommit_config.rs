@@ -23,8 +23,8 @@ pub struct AutocommitConfig {
 
 impl AutocommitConfig {
     fn new() -> anyhow::Result<Self> {
-        let name = GitRepository::get_git_name()?;
-        let email = GitRepository::get_git_email()?;
+        let name = GitRepository::get_git_user_email()?;
+        let email = GitRepository::get_git_user_email()?;
         let config_data = ConfigData {
             description_enabled: ConfigItem::new(false),
             emoji_enabled: ConfigItem::new(false),
