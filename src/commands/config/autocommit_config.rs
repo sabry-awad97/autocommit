@@ -36,6 +36,7 @@ impl AutocommitConfig {
             default_commit_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
             open_ai_api_key: ConfigItem::new(OptionString::default()),
             api_host: ConfigItem::new(String::from("https://api.openai.com")),
+            open_ai_model: ConfigItem::new(String::from("gpt-3.5-turbo")),
         };
         Ok(Self { config_data })
     }
