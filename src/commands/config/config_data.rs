@@ -19,7 +19,7 @@ pub struct ConfigData {
     pub default_commit_message: ConfigItem<OptionString>,
     pub open_ai_api_key: ConfigItem<OptionString>,
     pub api_host: ConfigItem<String>,
-    pub open_ai_model: ConfigItem<String>,
+    pub open_ai_model: ConfigItem<OptionString>,
     pub default_push_behavior: ConfigItem<DefaultBehaviorOption>,
     pub default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
 }
@@ -43,7 +43,7 @@ impl<'de> Deserialize<'de> for ConfigData {
             default_push_behavior: ConfigItem<DefaultBehaviorOption>,
             default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
             api_host: ConfigItem<String>,
-            open_ai_model: ConfigItem<String>,
+            open_ai_model: ConfigItem<OptionString>,
         }
 
         let inner = InnerConfigData::deserialize(deserializer)?;

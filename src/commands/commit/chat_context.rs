@@ -102,7 +102,11 @@ impl ChatContext {
 
         let open_ai_api_key = open_ai_api_key.unwrap();
         let api_host = &config.config_data.api_host.get_value_ref();
-        let open_ai_model = &config.config_data.open_ai_model.get_value_ref();
+        let open_ai_model = &config
+            .config_data
+            .open_ai_model
+            .get_value_ref()
+            .get_inner_value();
 
         debug!("Generating commit message...");
         let commit_message = generate_message(

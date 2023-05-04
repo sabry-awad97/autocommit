@@ -230,8 +230,9 @@ pub async fn generate_message(
     prompt: &[Message],
     open_ai_api_key: &str,
     api_host: &str,
-    model: &str,
+    model: &Option<String>,
 ) -> anyhow::Result<String> {
     let mut gen = Generator::new(open_ai_api_key, api_host);
-    gen.generate(prompt, model).await
+    gen.generate(prompt, &model.clone().unwrap_or("gpt-3.5-turbo".to_owned()))
+        .await
 }
