@@ -30,13 +30,12 @@ pub struct CommitCommand {
 impl CommitCommand {
     pub async fn stage_all_changed_files(changed_files: &[String]) -> anyhow::Result<()> {
         if !changed_files.is_empty() {
-            GitRepository::git_add(changed_files)?;
+            GitRepository::git_add_all()?;
         } else {
             return Err(anyhow!(
                 "No changes detected, write some code and run again"
             ));
         }
-
         Ok(())
     }
 

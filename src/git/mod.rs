@@ -185,9 +185,13 @@ impl GitRepository {
         })?;
         let mut index = repo.index()?;
 
-        index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)?;
+        index
+            .add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
+            .map_err(|err| anyhow!("Failed to add files to the Git index: {}", err))?;
 
-        index.write()?;
+        index
+            .write()
+            .map_err(|err| anyhow!("Failed to write the Git index: {}", err))?;
 
         Ok(())
     }
