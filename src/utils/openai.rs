@@ -176,12 +176,10 @@ impl OpenAI {
         &mut self,
         model_name: OAIModel,
         messages: impl Into<Vec<Message>>,
-        max_tokens: usize,
     ) -> Result<OAIResponse, Error> {
         info!("Creating chat completion with model: {}", model_name);
 
         let chat_request = OAIRequest::builder(model_name, messages)
-            .max_tokens::<u64>(max_tokens.try_into().unwrap())
             .temperature(0.5)
             .top_p(0.1)
             .build()?;
@@ -211,10 +209,7 @@ impl Generator {
     async fn generate(&mut self, prompt: &[Message], model_name: &str) -> anyhow::Result<String> {
         let model = OAIModel::from_str(model_name).map_err(|err| anyhow!(err))?;
 
-        let response = self
-            .openai
-            .create_chat_completion(model, prompt, 196)
-            .await?;
+        let response = self.openai.create_chat_completion(model, prompt).await?;
 
         let result = response
             .choices
