@@ -29,21 +29,29 @@ impl ChatContext {
         let email = &config_data.email.get_value_ref();
 
         let mut system_message = vec![
-            "You are to act as the author of a commit message in git.",
-            "Your mission is to create clean and comprehensive commit messages in the conventional commit convention and explain why a change was done."
+            "You are a software developer and need to create a commit message for a git repository.",
+            "Write a clear and concise git commit message that follows the imperative mood and starts with a specific action verb that clearly conveys the changes made (e.g. 'Implement', 'Refactor', 'Optimize', 'Fix', 'Add', 'Remove').",
+            "The first line should provide a brief summary of the changes in present tense, followed by a more detailed explanation in the second line that includes any necessary context or background information to help other developers understand the changes made.",
+            "Avoid using technical jargon or acronyms that may be unfamiliar to other developers.",
+            "",
+            "Multiple changes should be broken down into separate commits with individual messages.",
         ];
 
         if *emoji_enabled {
             system_message.push("Use GitMoji convention to preface the commit.");
-        } else {
-            system_message.push("Do not preface the commit with anything.");
+            system_message.push("Look up the GitMoji convention to choose an appropriate emoji for the type of changes being made (e.g. 🐛 for bug fixes, 🎉 for new features, etc.)");
         }
 
         if *description_enabled {
-            system_message.push("Be specific and concise in the commit message summary, highlighting the most important change(s).");
+            system_message.push("You should also provide a detailed explanation in the commit description, including any relevant context or reasoning behind the change. Specifically, you should:");
+            system_message.push("Include a brief, descriptive summary of the changes made in the commit message");
             system_message.push("Provide more detailed explanation in the commit description, including any relevant context or reasoning behind the change.");
-            system_message.push("Don't start it with 'This commit', just describe the changes.");
-            system_message.push("Lines must not be longer than 74 characters.");
+            system_message.push("Start the commit description with a brief summary of the changes made, similar to the summary in the commit message.");
+            system_message.push("Provide additional context or background information that might be helpful for other developers to understand why the changes were necessary.");
+            system_message.push("If the changes fix a bug or issue, describe the symptoms of the bug and the steps taken to fix it.");
+            system_message.push("If the changes are related to a feature enhancement, describe what the new feature does and why it was added.");
+            system_message.push("If there were any particular challenges or obstacles that needed to be overcome to make these changes, mention them in the commit description.");
+            system_message.push("The commit message should be under 72 characters and focused on a single change or set of related changes.");
         } else {
             system_message.push("Don't add any descriptions to the commit, only commit message.")
         }
@@ -53,7 +61,6 @@ impl ChatContext {
         system_message.push(
             "If the change adds a new feature or enhancement, the type of change is a 'feat'",
         );
-        system_message.push("If the change modifies existing functionality, the type of change can be a 'refactor'.");
         system_message.push("If the change modifies existing functionality, the type of change can be a 'refactor'.");
         system_message.push("If the change modifies documentation, updates tests, or makes other minor changes, the type of change is a 'chore'.");
         system_message.push(
