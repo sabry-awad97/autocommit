@@ -302,6 +302,9 @@ impl GitRepository {
             .map_err(|e| anyhow!("Failed to execute git status command: {}", e))?;
 
         let status_lines = String::from_utf8_lossy(&status_output.stdout);
+        if status_lines.trim().is_empty() {
+            return Ok("".to_string());
+        }
         let mut table = Table::new();
         table.set_format(*consts::FORMAT_BOX_CHARS);
         table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
