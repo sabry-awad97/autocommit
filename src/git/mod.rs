@@ -171,9 +171,14 @@ impl GitRepository {
             .map_err(|err| anyhow!("Failed to open the Git index: {}", err))?;
 
         for file in files {
-            index.add_path(Path::new(file)).map_err(|err| {
-                anyhow!("Failed to add file '{}' to the Git index: {}", file, err)
-            })?;
+            let path = Path::new(file);
+            if path.is_file() {
+                index.add_path(path).map_err(|err| {
+                    anyhow!("Failed to add file '{}' to the Git index: {}", file, err)
+                })?;
+            } else {
+                eprintln!("{} '{}'", "Skipping directory".yellow(), file);
+            }
         }
 
         index
