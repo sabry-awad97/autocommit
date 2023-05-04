@@ -7,8 +7,10 @@ use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OAIModel {
+    #[serde(rename = "gpt-3.5-turbo")]
     GPT3Turbo,
     GPT3_5Turbo0301,
+    #[serde(rename = "gpt-4")]
     GPT4,
     GPT4_32K,
     GPT4_0314,
