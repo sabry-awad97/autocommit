@@ -5,18 +5,12 @@ use anyhow::anyhow;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use strum::{Display, EnumString};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct DefaultBehaviorOption(Option<DefaultBehavior>);
 
 impl DefaultBehaviorOption {
     pub fn get_inner_value(&self) -> Option<DefaultBehavior> {
         self.0.clone()
-    }
-}
-
-impl Default for DefaultBehaviorOption {
-    fn default() -> Self {
-        Self(None)
     }
 }
 
