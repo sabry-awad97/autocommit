@@ -1,4 +1,4 @@
-use std::{path::Path, fmt::format};
+use std::path::Path;
 
 use crate::utils::outro;
 use anyhow::anyhow;
@@ -186,7 +186,7 @@ impl GitRepository {
         let branch_name = commit_info.split(' ').nth(0).unwrap_or("");
         let commit_info = format!("{} {}", branch_name, commit_hash);
         let last_line = lines.last().unwrap_or(&"").trim();
-        let output = format!("{}\n{}", commit_info, last_line);
+        let output = format!("{} {}", commit_info, last_line);
         Ok(output)
     }
 
