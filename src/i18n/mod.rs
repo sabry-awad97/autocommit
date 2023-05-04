@@ -34,11 +34,11 @@ pub fn load_i18n() -> I18n {
         I18nTranslation {
             commit_fix: "fix(main.rs): Correct JSON parsing issue for joke response ".to_string(),
             commit_feat: "feat(main.rs): Add error handling for API request ".to_string(),
-            commit_description: String::from(format!("After further testing, it was determined that JSON response data for the joke endpoint contained leading/trailing white space. To fix the issue, string trimming was added to the JSON parsing step.\n\
+            commit_description: String::from("After further testing, it was determined that JSON response data for the joke endpoint contained leading/trailing white space. To fix the issue, string trimming was added to the JSON parsing step.\n\
             To improve the error handling logic of the API request, a `match` expression was added to handle the case when the API request fails.\n\
             Changes made:\n\
             - The `serde_json::from_str` function now uses `trim()` function to remove leading/trailing spaces before data parsing.\n\
-            - A `match` expression now handles the `Err` case when making the API request.\n")),
+            - A `match` expression now handles the `Err` case when making the API request.\n"),
             language: "English".to_string(),
         },
     );
