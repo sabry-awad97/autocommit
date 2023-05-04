@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Signature, Status, StatusOptions};
+use git2::{Repository, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -161,28 +161,26 @@ impl GitRepository {
         Ok(())
     }
 
-    pub fn git_commit(message: &str) -> anyhow::Result<String> {
-        let repo = Repository::open_from_env()?;
-        let tree_id = repo.index()?.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-        let name = Self::get_git_user_name()?;
-        let email = Self::get_git_user_email()?;
-        let head = repo.head()?;
-        let head_commit = head.peel_to_commit();
-        let signature = Signature::now(&name, &email)?;
-        let commit_id = if let Some(head_commit) = head_commit.ok() {
-            repo.commit(
-                Some("HEAD"),
-                &signature,
-                &signature,
-                message,
-                &tree,
-                &[&head_commit],
-            )?
-        } else {
-            repo.commit(Some("HEAD"), &signature, &signature, message, &tree, &[])?
-        };
-        Ok(commit_id.to_string())
+    pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<String> {
+        let output = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .arg("--author")
+            .arg(format!("{} <{}>", name, email))
+            .output()
+            .await
+            .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
+
+        let stdout = String::from_utf8(output.stdout)?;
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+        if !output.status.success() {
+            error!("Failed to commit changes: {}", stderr);
+            return Err(anyhow!(stderr));
+        }
+
+        Ok(stdout)
     }
 
     pub async fn git_pull(remote: &str) -> anyhow::Result<()> {
