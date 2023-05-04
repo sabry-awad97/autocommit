@@ -1,10 +1,13 @@
-use std::process::Output;
+use std::{path::Path, process::Output};
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, StatusOptions, Status};
-use ignore::{gitignore::{GitignoreBuilder, Gitignore}, WalkBuilder};
+use git2::{Repository, Status, StatusOptions};
+use ignore::{
+    gitignore::{Gitignore, GitignoreBuilder},
+    WalkBuilder,
+};
 use log::error;
 use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
@@ -134,17 +137,15 @@ impl GitRepository {
         Ok(diff)
     }
 
-    pub async fn git_add(files: &[String]) -> anyhow::Result<()> {
-        let mut command = Command::new("git");
-        command.arg("add").args(files);
+    pub fn git_add(files: &[String]) -> anyhow::Result<()> {
+        let repo = Repository::open_from_env()?;
+        let mut index = repo.index()?;
 
-        let mut child = command.spawn()?;
-
-        let status = child.wait().await?;
-
-        if !status.success() {
-            return Err(anyhow!("Command 'git add' failed"));
+        for file in files {
+            index.add_path(Path::new(file))?;
         }
+
+        index.write()?;
 
         Ok(())
     }

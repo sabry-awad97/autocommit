@@ -30,7 +30,7 @@ pub struct CommitCommand {
 impl CommitCommand {
     pub async fn stage_all_changed_files(changed_files: &[String]) -> anyhow::Result<()> {
         if !changed_files.is_empty() {
-            GitRepository::git_add(changed_files).await?;
+            GitRepository::git_add(changed_files)?;
         } else {
             return Err(anyhow!(
                 "No changes detected, write some code and run again"
@@ -94,7 +94,7 @@ impl CommitCommand {
                 } else if !changed_files.is_empty() {
                     // Prompt the user to select files to stage
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
-                    GitRepository::git_add(&files).await?;
+                    GitRepository::git_add(&files)?;
                     self.stage_all = false;
                     continue;
                 } else {
