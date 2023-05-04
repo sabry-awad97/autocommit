@@ -24,3 +24,4 @@ indicatif = "0.17.3"
 log = "0.4.17"
 strum = { version = "0.24", features = ["derive"] }
 env_logger = "0.10.0"
+prettytable-rs = "0.10.0"

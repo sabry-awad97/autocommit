@@ -7,7 +7,6 @@ use anyhow::anyhow;
 use colored::{Color, Colorize};
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 use log::{debug, info};
-use std::time::Duration;
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -29,11 +28,9 @@ pub struct CommitCommand {
 }
 
 impl CommitCommand {
-    pub async fn stage_all_changed_files() -> anyhow::Result<()> {
-        let changed_files = GitRepository::get_changed_files().await?;
-
+    pub async fn stage_all_changed_files(changed_files: &[String]) -> anyhow::Result<()> {
         if !changed_files.is_empty() {
-            GitRepository::git_add(&changed_files).await?;
+            GitRepository::git_add(changed_files).await?;
         } else {
             return Err(anyhow!(
                 "No changes detected, write some code and run again"
@@ -47,24 +44,40 @@ impl CommitCommand {
         info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
         loop {
-            if self.stage_all {
-                Self::stage_all_changed_files().await?;
-            }
-
+            // Get the list of staged and changed files
             let staged_files = GitRepository::get_staged_files().await?;
             let changed_files = GitRepository::get_changed_files().await?;
 
+            // If there are no changes, exit the loop
             if staged_files.is_empty() && changed_files.is_empty() {
                 outro(&format!("{}", "No changes detected, exiting...".red()));
                 return Ok(());
             }
 
+            if self.stage_all {
+                Self::stage_all_changed_files(&changed_files).await?;
+            }
+
+            // Prompt the user if they want to see the Git status
+            let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt("Do you want to see the Git status before committing?")
+                .default(true)
+                .interact_opt()?
+                .unwrap_or(false);
+
+            // Show the Git status if the user wants to see it
+            if should_show_status {
+                let status_lines = GitRepository::git_status().await?;
+                outro(&format!("{}\n{}", "Git status:".green(), status_lines));
+            }
+
+            // Count the number of staged files and display them to the user
             let mut staged_spinner = spinner();
             staged_spinner.start("Counting staged files...");
-            tokio::time::sleep(Duration::from_millis(500)).await;
             if staged_files.is_empty() {
                 staged_spinner.stop("No files are staged");
 
+                // Prompt the user if they want to stage all files and generate a commit message
                 let is_stage_all_and_commit_confirmed_by_user =
                     Confirm::with_theme(&ColorfulTheme::default())
                         .with_prompt("Do you want to stage all files and generate commit message?")
@@ -72,15 +85,18 @@ impl CommitCommand {
                         .interact_opt()?
                         .unwrap_or(false);
 
+                // If the user confirms, stage all files and continue the loop
                 if is_stage_all_and_commit_confirmed_by_user {
                     self.stage_all = true;
                     continue;
                 } else if !changed_files.is_empty() {
+                    // Prompt the user to select files to stage
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
                     GitRepository::git_add(&files).await?;
                     self.stage_all = false;
                     continue;
                 } else {
+                    // If no files are selected for staging, exit the loop
                     outro(&format!(
                         "{}",
                         "No files selected for staging, exiting...".red()
@@ -93,13 +109,15 @@ impl CommitCommand {
                     staged_files.len().to_string().green(),
                     staged_files
                         .iter()
-                        .map(|file| format!("  {}", file))
+                        .map(|file| format!("  📄 {}", file))
                         .collect::<Vec<_>>()
                         .join("\n")
                 ));
 
+                // Get the diff of the staged files
                 let staged_diff = GitRepository::get_staged_diff(&staged_files).await?;
 
+                // Generate a commit message
                 let commit_message = if self.skip_chatbot {
                     if let Some(default_message) = config
                         .config_data
@@ -120,16 +138,21 @@ impl CommitCommand {
                         .await?
                 };
 
+                // Prompt the user to confirm the commit message
                 if let Ok(Some(new_message)) = self
                     .prompt_to_commit_changes(config, &staged_diff, &commit_message)
                     .await
                 {
                     self.commit_changes(&new_message).await?;
+                    // Prompt the user to select a remote repository
                     if let Some(remote) = Self::prompt_for_remote().await? {
+                        // Prompt the user to confirm the push
                         if Self::prompt_for_push(&remote, config)? || self.skip_push_confirmation {
+                            // Pull changes from the remote repository if necessary
                             if Self::prompt_for_pull(&remote)? {
                                 Self::pull_changes(&remote).await?;
                             }
+                            // Push changes to the remote repository
                             Self::push_changes(&new_message, &remote, self.branch_name.clone())
                                 .await?;
                             info!("Autocommit process completed successfully");
@@ -137,6 +160,20 @@ impl CommitCommand {
                     }
                 }
 
+                // Prompt the user if they want to see the Git status again
+                let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Do you want to see the Git status again?")
+                    .default(false)
+                    .interact_opt()?
+                    .unwrap_or(false);
+
+                // If the user wants to see the Git status again, show it
+                if should_show_status {
+                    let status_lines = GitRepository::git_status().await?;
+                    outro(&format!("{}\n{}", "Git status:".green(), status_lines));
+                }
+
+                // Prompt the user to continue or exit the loop
                 let should_continue = Self::prompt_to_continue().await?;
                 if !should_continue {
                     outro(&format!("{}", "Exiting...".red()));
@@ -346,7 +383,10 @@ impl CommitCommand {
     pub async fn prompt_for_remote() -> anyhow::Result<Option<String>> {
         let remotes = GitRepository::get_git_remotes().await?;
         if remotes.is_empty() {
-            outro(&format!("{}", "No remote repository found, exiting...".red()));
+            outro(&format!(
+                "{}",
+                "No remote repository found, exiting...".red()
+            ));
             return Ok(None);
         }
 

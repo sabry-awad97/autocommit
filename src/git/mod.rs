@@ -1,11 +1,11 @@
 use std::process::Output;
 
+use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
 use log::error;
+use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
-
-use crate::utils::outro;
 
 pub struct GitRepository {}
 
@@ -280,15 +280,38 @@ impl GitRepository {
         let output = cmd.output().await?;
 
         if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            error!(
+            let output: String = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let error_message =
+                format!("Failed to checkout new branch {}: {}", branch_name, output);
+            error!("{}", error_message);
+            anyhow::bail!(
                 "Failed to checkout new branch {}: {}",
-                branch_name, error_message
+                branch_name,
+                error_message
             );
-            anyhow::bail!("Failed to checkout new branch {}: {}", branch_name, error_message);
         }
 
         Ok(())
+    }
+
+    pub async fn git_status() -> anyhow::Result<String> {
+        let status_output = Command::new("git")
+            .args(&["status", "--porcelain"])
+            .output()
+            .await
+            .map_err(|e| anyhow!("Failed to execute git status command: {}", e))?;
+
+        let status_lines = String::from_utf8_lossy(&status_output.stdout);
+        let mut table = Table::new();
+        table.set_format(*consts::FORMAT_BOX_CHARS);
+        table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
+        for line in status_lines.lines() {
+            let mut cells = line.split_whitespace();
+            let file = cells.next().unwrap_or("");
+            let status = cells.next().unwrap_or("");
+            table.add_row(Row::new(vec![Cell::new(file), Cell::new(status)]));
+        }
+        Ok(table.to_string())
     }
 }
 
