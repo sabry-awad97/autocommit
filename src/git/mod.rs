@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Status, StatusOptions};
+use git2::{Repository, Signature, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -196,33 +196,65 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<String> {
-        let output = Command::new("git")
-            .arg("commit")
-            .arg("-m")
-            .arg(message)
-            .arg("--author")
-            .arg(format!("{} <{}>", name, email))
-            .output()
-            .await
-            .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
+    pub async fn get_commit_summary_table(message: &str, name: &str, email: &str) -> anyhow::Result<Table> {
+        let repo = Repository::open_from_env()?;
+        let tree_id = repo.index()?.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        let head = repo.head()?;
+        let head_commit = head.peel_to_commit();
+        let committer = Signature::now(&name, &email)?;
+        let commit_id = if let Some(head_commit) = head_commit.ok() {
+            repo.commit(
+                Some("HEAD"),
+                &committer,
+                &committer,
+                message,
+                &tree,
+                &[&head_commit],
+            )?
+        } else {
+            repo.commit(Some("HEAD"), &committer, &committer, message, &tree, &[])?
+        };
+        let commit = repo.find_commit(commit_id)?;
+        let branch_name = head.name().unwrap_or("Unknown");
+        let commit_count = Self::get_commit_count(&repo)?;
+        let (insertions, deletions) = Self::get_short_stat()?;
+        let commit_hash = commit.id().to_string();
+        // Display a table of commit information
+        let mut table = Table::new();
+        table.set_titles(Row::new(vec![
+            Cell::new("Commit Information").style_spec("bFy")
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new("Branch"),
+            Cell::new("Commit Hash"),
+            Cell::new("Message"),
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new(branch_name),
+            Cell::new(&commit_hash),
+            Cell::new(message),
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new("Author"),
+            Cell::new("Email"),
+            Cell::new("Commit Count"),
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new(&name),
+            Cell::new(&email),
+            Cell::new(&commit_count.to_string()),
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new("Insertions"),
+            Cell::new("Deletions"),
+        ]));
+        table.add_row(Row::new(vec![
+            Cell::new(&insertions.to_string()),
+            Cell::new(&deletions.to_string()),
+        ]));
 
-        let stdout = String::from_utf8(output.stdout)?;
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-
-        if !output.status.success() {
-            error!("Failed to commit changes: {}", stderr);
-            return Err(anyhow!(stderr));
-        }
-
-        let lines: Vec<&str> = stdout.trim().split('\n').collect();
-        let commit_info = lines[0].trim();
-        let commit_hash = commit_info.split(' ').nth(1).unwrap_or("");
-        let branch_name = commit_info.split(' ').nth(0).unwrap_or("");
-        let commit_info = format!("{} {}", branch_name, commit_hash);
-        let last_line = lines.last().unwrap_or(&"").trim();
-        let output = format!("{} {}", commit_info, last_line);
-        Ok(output)
+        Ok(table)
     }
 
     pub async fn git_pull(remote: &str) -> anyhow::Result<()> {
@@ -352,10 +384,7 @@ impl GitRepository {
         Ok(table.to_string())
     }
 
-    pub fn count_commits() -> anyhow::Result<usize> {
-        let repo =
-            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
-
+    pub fn get_commit_count(repo: &Repository) -> anyhow::Result<usize> {
         let head = repo.head()?;
         let head_oid = head
             .target()
@@ -366,16 +395,27 @@ impl GitRepository {
         Ok(count)
     }
 
-    async fn get_short_stat() -> anyhow::Result<String> {
-        // Get the number of insertions and deletions in the commit
-        let diff_output = Command::new("git")
-            .arg("diff")
-            .arg("--shortstat")
-            .output()
-            .await
-            .map_err(|e| anyhow!("Command 'git diff' failed: {}", e))?;
-        let diff_output_str = String::from_utf8(diff_output.stdout)?;
+    fn get_short_stat() -> anyhow::Result<(usize, usize)> {
+        // Open the repository in the current directory
+        let repo = Repository::open_from_env()?;
 
-        Ok(diff_output_str)
+        // Get the HEAD commit
+        let head = repo.head()?.peel_to_commit()?;
+
+        // Get the tree for the HEAD commit
+        let tree = head.tree()?;
+
+        // Get the diff between the HEAD commit and its parent
+        let parent_commit = head.parent(0)?;
+        let parent_tree = parent_commit.tree()?;
+        let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
+
+        // Get the number of insertions and deletions in the diff
+        let stats = diff.stats()?;
+        let insertions = stats.insertions();
+        let deletions = stats.deletions();
+
+        Ok((insertions, deletions))
     }
+
 }

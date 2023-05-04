@@ -188,10 +188,11 @@ impl CommitCommand {
         let name = config.config_data.name.get_value_ref();
         let email = config.config_data.email.get_value_ref();
 
-        let git_commit_output = GitRepository::git_commit(commit_message, name, email).await?;
+        let commit_table =
+            GitRepository::get_commit_summary_table(commit_message, name, email).await?;
 
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
-        outro(&git_commit_output);
+        commit_table.printstd();
 
         debug!("Changes committed successfully");
 
