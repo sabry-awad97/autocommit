@@ -241,13 +241,30 @@ impl CommitCommand {
             }
 
             let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Do you want to commit these changes?")
-                .default(true)
-                .interact_opt()?;
+                .with_prompt("Do you want to preview the changes before committing?")
+                .default(false)
+                .interact_opt()?
+                .unwrap_or(false);
 
-            if let Some(false) = preview_confirmed_by_user {
-                outro("Commit cancelled, exiting...");
-                return Ok(None);
+            if preview_confirmed_by_user {
+                outro(&format!(
+                    "Staged diff:\n{}\n",
+                    staged_diff.color(Color::TrueColor {
+                        r: 128,
+                        g: 128,
+                        b: 128
+                    })
+                ));
+
+                let commit_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Do you want to commit these changes?")
+                    .default(true)
+                    .interact_opt()?;
+
+                if let Some(false) = commit_confirmed_by_user {
+                    outro("Commit cancelled, exiting...");
+                    return Ok(None);
+                }
             }
         } else if let Some(default_commit_behavior) = &config
             .config_data
