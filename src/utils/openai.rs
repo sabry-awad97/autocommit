@@ -3,7 +3,7 @@ use derive_builder::Builder;
 use log::{debug, info};
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OAIModel {
@@ -15,6 +15,22 @@ pub enum OAIModel {
     GPT4_32K,
     GPT4_0314,
     GPT4_32K0314,
+}
+
+impl std::str::FromStr for OAIModel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "gpt-3.5-turbo" => Ok(OAIModel::GPT3Turbo),
+            "gpt-3.5-turbo-0301" => Ok(OAIModel::GPT3_5Turbo0301),
+            "gpt-4" => Ok(OAIModel::GPT4),
+            "gpt-4-32k" => Ok(OAIModel::GPT4_32K),
+            "gpt-4-0314" => Ok(OAIModel::GPT4_0314),
+            "gpt-4-32k-0314" => Ok(OAIModel::GPT4_32K0314),
+            _ => Err(format!("Invalid OpenAI Model: {}", s)),
+        }
+    }
 }
 
 impl fmt::Display for OAIModel {
@@ -111,10 +127,10 @@ pub struct OAIConfig {
 }
 
 impl OAIConfig {
-    fn new(api_host: String, openai_api_key: String) -> Self {
+    fn new(api_host: impl Into<String>, openai_api_key: impl Into<String>) -> Self {
         Self {
-            api_host,
-            openai_api_key,
+            api_host: api_host.into(),
+            openai_api_key: openai_api_key.into(),
         }
     }
 }
@@ -187,15 +203,17 @@ struct Generator {
 
 impl Generator {
     fn new(api_key: &str, api_host: &str) -> Self {
-        let config: OAIConfig = OAIConfig::new(api_host.to_owned(), api_key.to_string());
+        let config: OAIConfig = OAIConfig::new(api_host, api_key);
         let openai: OpenAI = OpenAI::new(config);
         Self { openai }
     }
 
-    async fn generate(&mut self, prompt: &[Message]) -> anyhow::Result<String> {
+    async fn generate(&mut self, prompt: &[Message], model_name: &str) -> anyhow::Result<String> {
+        let model = OAIModel::from_str(model_name).map_err(|err| anyhow!(err))?;
+
         let response = self
             .openai
-            .create_chat_completion(OAIModel::GPT3Turbo, prompt, 196)
+            .create_chat_completion(model, prompt, 196)
             .await?;
 
         let result = response
@@ -203,7 +221,7 @@ impl Generator {
             .first()
             .map(|choice| choice.message.content.clone())
             .ok_or_else(|| anyhow!("No message returned"))?;
-        debug!("Generated message: {}", result);
+        info!("Generated message: {}", result);
         Ok(result)
     }
 }
@@ -212,7 +230,8 @@ pub async fn generate_message(
     prompt: &[Message],
     open_ai_api_key: &str,
     api_host: &str,
+    model: &str,
 ) -> anyhow::Result<String> {
     let mut gen = Generator::new(open_ai_api_key, api_host);
-    gen.generate(prompt).await
+    gen.generate(prompt, model).await
 }
