@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Status, StatusOptions, build::CheckoutBuilder};
+use git2::{build::CheckoutBuilder, Repository, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -231,23 +231,13 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn get_git_remotes() -> anyhow::Result<Vec<String>> {
-        let output = Command::new("git")
-            .arg("remote")
-            .output()
-            .await
-            .map_err(|e| anyhow!("failed to execute 'git remote' command: {}", e))?;
-
-        if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            error!("Failed to get git remotes: {}", error_message);
-            return Err(anyhow!(error_message));
-        }
-
-        let remotes = String::from_utf8(output.stdout)?
-            .split('\n')
-            .filter(|remote| !remote.trim().is_empty())
-            .map(|remote| remote.to_string())
+    pub fn get_git_remotes() -> anyhow::Result<Vec<String>> {
+        let repo = Repository::open_from_env()?;
+        let remotes = repo
+            .remotes()?
+            .into_iter()
+            .filter_map(|remote| remote)
+            .map(|remote| remote.to_owned())
             .collect();
 
         Ok(remotes)
@@ -269,7 +259,10 @@ impl GitRepository {
 
     pub fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
         let repo = Repository::open_from_env()?;
-        let head = repo.head()?.target().ok_or_else(|| anyhow!("Could not get target of HEAD"))?;
+        let head = repo
+            .head()?
+            .target()
+            .ok_or_else(|| anyhow!("Could not get target of HEAD"))?;
         let commit = repo.find_commit(head)?;
         let branch = repo.branch(branch_name, &commit, false)?;
         repo.set_head(branch.name().unwrap().unwrap())?;
@@ -293,10 +286,7 @@ impl GitRepository {
 
         let mut table = Table::new();
         table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
-        table.add_row(Row::new(vec![
-            Cell::new("Status"),
-            Cell::new("File"),
-        ]));
+        table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
 
         for entry in statuses.iter() {
             let status = match entry.status() {
@@ -311,7 +301,7 @@ impl GitRepository {
             let file = entry.path().unwrap_or("");
             table.add_row(Row::new(vec![Cell::new(status), Cell::new(file)]));
         }
-        
+
         Ok(table.to_string())
     }
 }

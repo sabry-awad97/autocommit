@@ -374,7 +374,7 @@ impl CommitCommand {
     }
 
     pub async fn prompt_for_remote() -> anyhow::Result<Option<String>> {
-        let remotes = GitRepository::get_git_remotes().await?;
+        let remotes = GitRepository::get_git_remotes()?;
         if remotes.is_empty() {
             eprintln!("  {}", "No remote repository found".yellow());
             return Ok(None);
