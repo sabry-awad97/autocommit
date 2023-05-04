@@ -365,4 +365,17 @@ impl GitRepository {
         let count = revwalk.count();
         Ok(count)
     }
+
+    async fn get_short_stat() -> anyhow::Result<String> {
+        // Get the number of insertions and deletions in the commit
+        let diff_output = Command::new("git")
+            .arg("diff")
+            .arg("--shortstat")
+            .output()
+            .await
+            .map_err(|e| anyhow!("Command 'git diff' failed: {}", e))?;
+        let diff_output_str = String::from_utf8(diff_output.stdout)?;
+
+        Ok(diff_output_str)
+    }
 }
