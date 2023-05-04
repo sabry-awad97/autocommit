@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Status, StatusOptions};
+use git2::{Repository, Status, StatusOptions, build::CheckoutBuilder};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -267,23 +267,13 @@ impl GitRepository {
         Ok(email)
     }
 
-    pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
-        let mut cmd = Command::new("git");
-        cmd.arg("checkout").arg("-b").arg(branch_name);
-        let output = cmd.output().await?;
-
-        if !output.status.success() {
-            let output: String = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let error_message =
-                format!("Failed to checkout new branch {}: {}", branch_name, output);
-            error!("{}", error_message);
-            anyhow::bail!(
-                "Failed to checkout new branch {}: {}",
-                branch_name,
-                error_message
-            );
-        }
-
+    pub fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
+        let repo = Repository::open_from_env()?;
+        let head = repo.head()?.target().ok_or_else(|| anyhow!("Could not get target of HEAD"))?;
+        let commit = repo.find_commit(head)?;
+        let branch = repo.branch(branch_name, &commit, false)?;
+        repo.set_head(branch.name().unwrap().unwrap())?;
+        repo.checkout_head(Some(CheckoutBuilder::default().force()))?;
         Ok(())
     }
 
