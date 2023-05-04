@@ -160,5 +160,5 @@ pub async fn get_service() -> Result<AutocommitService> {
         config_path: None,
     };
     info!("Getting config");
-    Ok(config_command.get_service().await?)
+    config_command.get_service().await
 }
