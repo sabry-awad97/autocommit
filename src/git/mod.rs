@@ -6,6 +6,7 @@ use colored::Colorize;
 use log::error;
 use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
+mod tests;
 
 pub struct GitRepository {}
 
@@ -305,7 +306,7 @@ impl GitRepository {
         if status_lines.trim().is_empty() {
             return Err(anyhow!("No changes to commit."));
         }
-        
+
         let mut table = Table::new();
         table.set_format(*consts::FORMAT_BOX_CHARS);
         table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
