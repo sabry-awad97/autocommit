@@ -172,7 +172,11 @@ impl CommitCommand {
         }
     }
 
-    pub async fn commit_changes(&self, config: &AutocommitConfig, commit_message: &str) -> anyhow::Result<()> {
+    pub async fn commit_changes(
+        &self,
+        config: &AutocommitConfig,
+        commit_message: &str,
+    ) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
 
         let mut commit_spinner = spinner();
@@ -372,10 +376,7 @@ impl CommitCommand {
     pub async fn prompt_for_remote() -> anyhow::Result<Option<String>> {
         let remotes = GitRepository::get_git_remotes().await?;
         if remotes.is_empty() {
-            outro(&format!(
-                "{}",
-                "No remote repository found, exiting...".red()
-            ));
+            eprintln!("  {}", "No remote repository found".yellow());
             return Ok(None);
         }
 
