@@ -44,31 +44,33 @@ impl CommitCommand {
         info!("Starting autocommit process");
         GitRepository::assert_git_repo().await?;
         loop {
-            // Get the list of staged and changed files
-            let staged_files = GitRepository::get_staged_files().await?;
+            // Get the list of changed files
             let changed_files = GitRepository::get_changed_files().await?;
+
+            if self.stage_all {
+                Self::stage_all_changed_files(&changed_files).await?;
+            } else {
+                // Prompt the user if they want to see the Git status
+                let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Do you want to see the Git status before committing?")
+                    .default(false)
+                    .interact_opt()?
+                    .unwrap_or(false);
+
+                // Show the Git status if the user wants to see it
+                if should_show_status {
+                    let status_lines = GitRepository::git_status().await?;
+                    outro(&format!("{}\n{}", "Git status:".green(), status_lines));
+                }
+            }
+
+            // Get the list of staged files
+            let staged_files = GitRepository::get_staged_files().await?;
 
             // If there are no changes, exit the loop
             if staged_files.is_empty() && changed_files.is_empty() {
                 outro(&format!("{}", "No changes detected, exiting...".red()));
                 return Ok(());
-            }
-
-            if self.stage_all {
-                Self::stage_all_changed_files(&changed_files).await?;
-            }
-
-            // Prompt the user if they want to see the Git status
-            let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Do you want to see the Git status before committing?")
-                .default(false)
-                .interact_opt()?
-                .unwrap_or(false);
-
-            // Show the Git status if the user wants to see it
-            if should_show_status {
-                let status_lines = GitRepository::git_status().await?;
-                outro(&format!("{}\n{}", "Git status:".green(), status_lines));
             }
 
             // Count the number of staged files and display them to the user
@@ -103,85 +105,70 @@ impl CommitCommand {
                     ));
                     return Ok(());
                 }
-            } else {
-                staged_spinner.stop(&format!(
-                    "{} staged files:\n{}",
-                    staged_files.len().to_string().green(),
-                    staged_files
-                        .iter()
-                        .map(|file| format!("  📄 {}", file))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                ));
-
-                // Get the diff of the staged files
-                let staged_diff = GitRepository::get_staged_diff(&staged_files).await?;
-
-                // Generate a commit message
-                let commit_message = if self.skip_chatbot {
-                    if let Some(default_message) = config
-                        .config_data
-                        .default_commit_message
-                        .get_value_ref()
-                        .get_inner_value()
-                    {
-                        outro(&format!(
-                            "Using default commit message:\n{}\n",
-                            default_message
-                        ));
-                        default_message.clone()
-                    } else {
-                        return Err(anyhow!("No default commit message provided"));
-                    }
-                } else {
-                    self.generate_autocommit_message(config, &staged_diff)
-                        .await?
-                };
-
-                // Prompt the user to confirm the commit message
-                if let Ok(Some(new_message)) = self
-                    .prompt_to_commit_changes(config, &staged_diff, &commit_message)
-                    .await
-                {
-                    self.commit_changes(&new_message).await?;
-                    // Prompt the user to select a remote repository
-                    if let Some(remote) = Self::prompt_for_remote().await? {
-                        // Prompt the user to confirm the push
-                        if Self::prompt_for_push(&remote, config)? || self.skip_push_confirmation {
-                            // Pull changes from the remote repository if necessary
-                            if Self::prompt_for_pull(&remote)? {
-                                Self::pull_changes(&remote).await?;
-                            }
-                            // Push changes to the remote repository
-                            Self::push_changes(&new_message, &remote, self.branch_name.clone())
-                                .await?;
-                            info!("Autocommit process completed successfully");
-                        }
-                    }
-                }
-
-                // Prompt the user if they want to see the Git status again
-                let should_show_status = Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Do you want to see the Git status again?")
-                    .default(false)
-                    .interact_opt()?
-                    .unwrap_or(false);
-
-                // If the user wants to see the Git status again, show it
-                if should_show_status {
-                    let status_lines = GitRepository::git_status().await?;
-                    outro(&format!("{}\n{}", "Git status:".green(), status_lines));
-                }
-
-                // Prompt the user to continue or exit the loop
-                let should_continue = Self::prompt_to_continue().await?;
-                if !should_continue {
-                    outro(&format!("{}", "Exiting...".red()));
-                    return Ok(());
-                }
-
-                self.stage_all = false;
             }
+            staged_spinner.stop(&format!(
+                "{} staged files:\n{}",
+                staged_files.len().to_string().green(),
+                staged_files
+                    .iter()
+                    .map(|file| format!("  📄 {}", file))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+
+            // Get the diff of the staged files
+            let staged_diff = GitRepository::get_staged_diff(&staged_files).await?;
+
+            // Generate a commit message
+            let commit_message = if self.skip_chatbot {
+                if let Some(default_message) = config
+                    .config_data
+                    .default_commit_message
+                    .get_value_ref()
+                    .get_inner_value()
+                {
+                    outro(&format!(
+                        "Using default commit message:\n{}\n",
+                        default_message
+                    ));
+                    default_message.clone()
+                } else {
+                    return Err(anyhow!("No default commit message provided"));
+                }
+            } else {
+                self.generate_autocommit_message(config, &staged_diff)
+                    .await?
+            };
+
+            // Prompt the user to confirm the commit message
+            if let Ok(Some(new_message)) = self
+                .prompt_to_commit_changes(config, &staged_diff, &commit_message)
+                .await
+            {
+                self.commit_changes(&new_message).await?;
+                // Prompt the user to select a remote repository
+                if let Some(remote) = Self::prompt_for_remote().await? {
+                    // Prompt the user to confirm the push
+                    if Self::prompt_for_push(&remote, config)? || self.skip_push_confirmation {
+                        // Pull changes from the remote repository if necessary
+                        if Self::prompt_for_pull(&remote)? {
+                            Self::pull_changes(&remote).await?;
+                        }
+                        // Push changes to the remote repository
+                        Self::push_changes(&new_message, &remote, self.branch_name.clone()).await?;
+                        info!("Autocommit process completed successfully");
+                    }
+                }
+            }
+
+            // Prompt the user to continue or exit the loop
+            let should_continue = Self::prompt_to_continue().await?;
+            if !should_continue {
+                outro(&format!("{}", "Exiting...".red()));
+                return Ok(());
+            }
+
+            self.stage_all = false;
         }
     }
 
