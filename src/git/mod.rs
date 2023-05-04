@@ -9,7 +9,7 @@ use ignore::{
     WalkBuilder,
 };
 use log::error;
-use prettytable::{format::consts, Cell, Row, Table};
+use prettytable::{Cell, Row, Table};
 use tokio::process::Command;
 mod tests;
 
@@ -288,26 +288,40 @@ impl GitRepository {
     }
 
     pub async fn git_status() -> anyhow::Result<String> {
-        let status_output = Command::new("git")
-            .args(&["status", "--porcelain", "-u"])
-            .output()
-            .await
-            .map_err(|e| anyhow!("Failed to execute git status command: {}", e))?;
+        let repo =
+            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
 
-        let status_lines = String::from_utf8_lossy(&status_output.stdout);
-        if status_lines.trim().is_empty() {
+        let mut options = StatusOptions::new();
+        options.include_untracked(true);
+        let statuses = repo
+            .statuses(Some(&mut options))
+            .map_err(|e| anyhow!("Failed to get repository status: {}", e))?;
+
+        if statuses.is_empty() {
             return Err(anyhow!("No changes to commit."));
         }
 
         let mut table = Table::new();
-        table.set_format(*consts::FORMAT_BOX_CHARS);
-        table.add_row(Row::new(vec![Cell::new("Status"), Cell::new("File")]));
-        for line in status_lines.lines() {
-            let mut cells = line.split_whitespace();
-            let status = cells.next().unwrap_or("");
-            let file = cells.next().unwrap_or("");
+        table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
+        table.add_row(Row::new(vec![
+            Cell::new("Status"),
+            Cell::new("File"),
+        ]));
+
+        for entry in statuses.iter() {
+            let status = match entry.status() {
+                s if s.contains(Status::WT_NEW) => "Untracked",
+                s if s.contains(Status::WT_MODIFIED) => "Modified",
+                s if s.contains(Status::WT_DELETED) => "Deleted",
+                s if s.contains(Status::INDEX_NEW) => "Added",
+                s if s.contains(Status::INDEX_MODIFIED) => "Staged",
+                s if s.contains(Status::INDEX_DELETED) => "Removed",
+                _ => continue,
+            };
+            let file = entry.path().unwrap_or("");
             table.add_row(Row::new(vec![Cell::new(status), Cell::new(file)]));
         }
+        
         Ok(table.to_string())
     }
 }
