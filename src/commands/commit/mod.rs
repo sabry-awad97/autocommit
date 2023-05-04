@@ -125,10 +125,10 @@ impl CommitCommand {
                 {
                     self.commit_changes(&new_message).await?;
                     if let Some(remote) = Self::prompt_for_remote().await? {
-                        if Self::prompt_for_push(&remote, config).unwrap_or(false)
-                            || self.skip_push_confirmation
-                        {
-                            Self::pull_changes(&remote).await?;
+                        if Self::prompt_for_push(&remote, config)? || self.skip_push_confirmation {
+                            if Self::prompt_for_pull(&remote)? {
+                                Self::pull_changes(&remote).await?;
+                            }
                             Self::push_changes(&new_message, &remote, self.branch_name.clone())
                                 .await?;
                             info!("Autocommit process completed successfully");
@@ -149,22 +149,22 @@ impl CommitCommand {
 
     pub async fn commit_changes(&self, commit_message: &str) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
-    
+
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
-    
+
         if let Some(branch_name) = &self.branch_name {
             GitRepository::git_checkout_new_branch(branch_name).await?;
             GitRepository::git_add_all().await?;
         }
-    
+
         let git_commit_output = GitRepository::git_commit(commit_message).await?;
-    
+
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         outro(&git_commit_output);
-    
+
         debug!("Changes committed successfully");
-    
+
         Ok(())
     }
 
@@ -420,6 +420,24 @@ impl CommitCommand {
         };
 
         if push_confirmed_by_user {
+            Ok(true)
+        } else {
+            outro("Push cancelled, exiting...");
+            Ok(false)
+        }
+    }
+
+    pub fn prompt_for_pull(remote: &str) -> anyhow::Result<bool> {
+        let pull_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!(
+                "Do you want to pull changes from the remote repository {} before pushing?",
+                remote
+            ))
+            .default(true)
+            .interact_opt()?
+            .unwrap_or(true);
+
+        if pull_confirmed_by_user {
             Ok(true)
         } else {
             outro("Push cancelled, exiting...");
