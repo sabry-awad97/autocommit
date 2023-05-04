@@ -5,17 +5,11 @@ use serde::Serialize;
 use super::config_item::ConfigValue;
 use anyhow::anyhow;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct OptionString(Option<String>);
 impl OptionString {
     pub fn get_inner_value(&self) -> Option<String> {
         self.0.clone()
-    }
-}
-
-impl Default for OptionString {
-    fn default() -> Self {
-        Self(Default::default())
     }
 }
 
