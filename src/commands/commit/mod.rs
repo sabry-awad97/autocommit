@@ -180,7 +180,7 @@ impl CommitCommand {
 
         if let Some(branch_name) = &self.branch_name {
             GitRepository::git_checkout_new_branch(branch_name).await?;
-            GitRepository::git_add_all().await?;
+            GitRepository::git_add_all()?;
         }
 
         let git_commit_output = GitRepository::git_commit(commit_message).await?;

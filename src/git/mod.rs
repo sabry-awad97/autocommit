@@ -150,13 +150,14 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_add_all() -> anyhow::Result<()> {
-        let output = Command::new("git").arg("add").arg("--all").output().await?;
+    pub fn git_add_all() -> anyhow::Result<()> {
+        let repo = Repository::open_from_env()?;
+        let mut index = repo.index()?;
 
-        if !output.status.success() {
-            let error_message = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow!("Error: {}", error_message));
-        }
+        index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)?;
+
+        index.write()?;
+
         Ok(())
     }
 
