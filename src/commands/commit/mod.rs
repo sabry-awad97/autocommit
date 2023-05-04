@@ -69,9 +69,10 @@ impl CommitCommand {
                     Confirm::with_theme(&ColorfulTheme::default())
                         .with_prompt("Do you want to stage all files and generate commit message?")
                         .default(true)
-                        .interact_opt()?;
+                        .interact_opt()?
+                        .unwrap_or(false);
 
-                if let Some(true) = is_stage_all_and_commit_confirmed_by_user {
+                if is_stage_all_and_commit_confirmed_by_user {
                     self.stage_all = true;
                     continue;
                 } else if !changed_files.is_empty() {
