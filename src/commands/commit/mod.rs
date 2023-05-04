@@ -149,15 +149,22 @@ impl CommitCommand {
 
     pub async fn commit_changes(&self, commit_message: &str) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
-
+    
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
-        GitRepository::git_checkout_new_branch(self.branch_name.clone()).await?;
+    
+        if let Some(branch_name) = &self.branch_name {
+            GitRepository::git_checkout_new_branch(branch_name).await?;
+            GitRepository::git_add_all().await?;
+        }
+    
         let git_commit_output = GitRepository::git_commit(commit_message).await?;
-        GitRepository::git_add_all().await?;
+    
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         outro(&git_commit_output);
+    
         debug!("Changes committed successfully");
+    
         Ok(())
     }
 
