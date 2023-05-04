@@ -222,6 +222,7 @@ impl GitRepository {
         let commit_hash = commit.id().to_string();
         // Display a table of commit information
         let mut table = Table::new();
+        table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
         table.set_titles(Row::new(vec![
             Cell::new("Commit Information").style_spec("bFy")
         ]));
