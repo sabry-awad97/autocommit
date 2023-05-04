@@ -65,7 +65,7 @@ impl CommitCommand {
             }
 
             // Get the list of staged files
-            let staged_files = GitRepository::get_staged_files().await?;
+            let staged_files = GitRepository::get_staged_files()?;
 
             // If there are no changes, exit the loop
             if staged_files.is_empty() && changed_files.is_empty() {

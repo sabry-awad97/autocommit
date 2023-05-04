@@ -3,7 +3,8 @@ use std::process::Output;
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, StatusOptions};
+use git2::{Repository, StatusOptions, Status};
+use ignore::{gitignore::{GitignoreBuilder, Gitignore}, WalkBuilder};
 use log::error;
 use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
@@ -43,48 +44,60 @@ impl GitRepository {
         Ok(files)
     }
 
-    pub async fn get_staged_files() -> anyhow::Result<Vec<String>> {
-        let top_level_dir = Command::new("git")
-            .arg("rev-parse")
-            .arg("--show-toplevel")
-            .output()
-            .await
-            .map_err(|e| anyhow!("Command 'git rev-parse --show-toplevel' failed: {}", e))?
-            .stdout;
+    pub fn get_ignore_patterns() -> anyhow::Result<Gitignore> {
+        let top_level_dir = std::env::current_dir()?;
+        let mut ignore_file_paths = Vec::new();
 
-        let top_level_dir_str = String::from_utf8_lossy(&top_level_dir);
+        // Find all .gitignore files in the repository
+        for result in WalkBuilder::new(&top_level_dir)
+            .hidden(false)
+            .ignore(false)
+            .git_ignore(false)
+            .git_exclude(false)
+            .build()
+        {
+            let entry = result?;
+            let pat = ".autoignore";
+            if entry.file_type().map_or(false, |t| t.is_file())
+                && entry.file_name().to_string_lossy().ends_with(pat)
+            {
+                ignore_file_paths.push(entry.path().to_owned());
+            }
+        }
 
-        let output = Command::new("git")
-            .arg("diff")
-            .arg("--name-only")
-            .arg("--cached")
-            .arg("--relative")
-            .arg(top_level_dir_str.trim_end())
-            .output()
-            .await
-            .map_err(|e| {
-                anyhow!(
-                    "Command 'git diff --name-only --cached --relative {}' failed: {}",
-                    top_level_dir_str.trim_end(),
-                    e
-                )
-            })?;
+        // Create a Gitignore object from all the .gitignore files
+        let mut ig = GitignoreBuilder::new("");
+        for path in ignore_file_paths {
+            ig.add(path);
+        }
 
-        let output_str = String::from_utf8(output.stdout)?;
-        let files = output_str.split('\n').filter(|s| !s.is_empty());
+        Ok(ig.build()?)
+    }
 
-        // let ig = get_ignore_patterns().await?;
+    pub fn get_staged_files() -> anyhow::Result<Vec<String>> {
+        let repo = Repository::open_from_env()?;
+        let mut opts = StatusOptions::new();
+        opts.include_untracked(false);
+        let statuses = repo.statuses(Some(&mut opts))?;
 
-        let mut allowed_files: Vec<_> = files
-            .filter(|_file| {
-                // ig.matched(file, false).is_none()
-                true
-            })
-            .map(|v| v.to_owned())
-            .collect();
+        let ignore_patterns = Self::get_ignore_patterns()?;
+        let mut files = Vec::new();
+        for status in statuses.iter() {
+            let path = status.path().unwrap().to_string();
+            if status.status().contains(Status::INDEX_MODIFIED)
+                || status.status().contains(Status::INDEX_NEW)
+            {
+                if ignore_patterns
+                    .matched_path_or_any_parents(&path, false)
+                    .is_none()
+                {
+                    files.push(path);
+                }
+            }
+        }
 
-        allowed_files.sort();
-        Ok(allowed_files)
+        files.sort();
+        Ok(files)
     }
 
     pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
