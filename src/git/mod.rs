@@ -274,28 +274,18 @@ impl GitRepository {
         parse_output(output)
     }
 
-    pub async fn git_checkout_new_branch(branch_name: Option<String>) -> anyhow::Result<()> {
+    pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
         let mut cmd = Command::new("git");
-        cmd.arg("checkout");
-
-        if let Some(name) = branch_name.clone() {
-            cmd.arg("-b").arg(name);
-        }
-
+        cmd.arg("checkout").arg("-b").arg(branch_name);
         let output = cmd.output().await?;
 
         if !output.status.success() {
             let error_message = String::from_utf8_lossy(&output.stderr).trim().to_string();
             error!(
                 "Failed to checkout new branch {}: {}",
-                branch_name.clone().unwrap_or("".to_string()),
-                error_message
+                branch_name, error_message
             );
-            return Err(anyhow!(
-                "Failed to checkout new branch {}: {}",
-                branch_name.unwrap_or("".to_string()),
-                error_message
-            ));
+            anyhow::bail!("Failed to checkout new branch {}: {}", branch_name, error_message);
         }
 
         Ok(())
