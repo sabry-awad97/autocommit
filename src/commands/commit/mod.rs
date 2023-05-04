@@ -145,7 +145,7 @@ impl CommitCommand {
                 .prompt_to_commit_changes(config, &staged_diff, &commit_message)
                 .await
             {
-                self.commit_changes(&new_message).await?;
+                self.commit_changes(config, &new_message).await?;
                 // Prompt the user to select a remote repository
                 if let Some(remote) = Self::prompt_for_remote().await? {
                     // Prompt the user to confirm the push
@@ -172,7 +172,7 @@ impl CommitCommand {
         }
     }
 
-    pub async fn commit_changes(&self, commit_message: &str) -> anyhow::Result<()> {
+    pub async fn commit_changes(&self, config: &AutocommitConfig, commit_message: &str) -> anyhow::Result<()> {
         const COMMITTING_CHANGES: &str = "Committing changes...";
 
         let mut commit_spinner = spinner();
@@ -182,8 +182,10 @@ impl CommitCommand {
             GitRepository::git_checkout_new_branch(branch_name).await?;
             GitRepository::git_add_all()?;
         }
+        let name = config.config_data.name.get_value_ref();
+        let email = config.config_data.email.get_value_ref();
 
-        let git_commit_output = GitRepository::git_commit(commit_message)?;
+        let git_commit_output = GitRepository::git_commit(commit_message, name, email).await?;
 
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         outro(&git_commit_output);
