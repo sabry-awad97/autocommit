@@ -102,10 +102,16 @@ impl ChatContext {
 
         let open_ai_api_key = open_ai_api_key.unwrap();
         let api_host = &config.config_data.api_host.get_value_ref();
+        let open_ai_model = &config.config_data.open_ai_model.get_value_ref();
 
         debug!("Generating commit message...");
-        let commit_message =
-            generate_message(self.get_messages(), &open_ai_api_key, api_host).await?;
+        let commit_message = generate_message(
+            self.get_messages(),
+            &open_ai_api_key,
+            api_host,
+            open_ai_model,
+        )
+        .await?;
         info!("Commit message generated: {}", &commit_message);
         self.add_message(MessageRole::Assistant, commit_message.to_owned());
         Ok(commit_message)
