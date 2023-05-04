@@ -218,7 +218,7 @@ impl GitRepository {
         let commit = repo.find_commit(commit_id)?;
         let branch_name = head.name().unwrap_or("Unknown");
         let commit_count = Self::get_commit_count(&repo)?;
-        let (insertions, deletions) = Self::get_short_stat()?;
+        let (files_changes, insertions, deletions) = Self::get_short_stat()?;
         let commit_hash = commit.id().to_string();
         // Display a table of commit information
         let mut table = Table::new();
@@ -246,10 +246,12 @@ impl GitRepository {
             Cell::new(&commit_count.to_string()),
         ]));
         table.add_row(Row::new(vec![
+            Cell::new("Files Changed"),
             Cell::new("Insertions"),
             Cell::new("Deletions"),
         ]));
         table.add_row(Row::new(vec![
+            Cell::new(&files_changes.to_string()),
             Cell::new(&insertions.to_string()),
             Cell::new(&deletions.to_string()),
         ]));
@@ -395,7 +397,7 @@ impl GitRepository {
         Ok(count)
     }
 
-    fn get_short_stat() -> anyhow::Result<(usize, usize)> {
+    fn get_short_stat() -> anyhow::Result<(usize, usize, usize)> {
         // Open the repository in the current directory
         let repo = Repository::open_from_env()?;
 
@@ -414,8 +416,9 @@ impl GitRepository {
         let stats = diff.stats()?;
         let insertions = stats.insertions();
         let deletions = stats.deletions();
+        let files_changed = stats.files_changed();
 
-        Ok((insertions, deletions))
+        Ok((files_changed, insertions, deletions))
     }
 
 }
