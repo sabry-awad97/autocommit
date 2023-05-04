@@ -183,7 +183,7 @@ impl CommitCommand {
             GitRepository::git_add_all()?;
         }
 
-        let git_commit_output = GitRepository::git_commit(commit_message).await?;
+        let git_commit_output = GitRepository::git_commit(commit_message)?;
 
         commit_spinner.stop(&format!("{} Changes committed successfully", "✔".green()));
         outro(&git_commit_output);
