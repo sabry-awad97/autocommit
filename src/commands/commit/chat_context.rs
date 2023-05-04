@@ -33,7 +33,6 @@ impl ChatContext {
             "Write a clear and concise git commit message that follows the imperative mood and starts with a specific action verb that clearly conveys the changes made (e.g. 'Implement', 'Refactor', 'Optimize', 'Fix', 'Add', 'Remove').",
             "The first line should provide a brief summary of the changes in present tense, followed by a more detailed explanation in the second line that includes any necessary context or background information to help other developers understand the changes made.",
             "Avoid using technical jargon or acronyms that may be unfamiliar to other developers.",
-            "",
             "Multiple changes should be broken down into separate commits with individual messages.",
         ];
 
@@ -55,8 +54,6 @@ impl ChatContext {
         } else {
             system_message.push("Don't add any descriptions to the commit, only commit message.")
         }
-
-        system_message.push("Use the present tense.");
         system_message.push("If the change fixes a bug or issue, the type of change is a 'fix'.");
         system_message.push(
             "If the change adds a new feature or enhancement, the type of change is a 'feat'",
