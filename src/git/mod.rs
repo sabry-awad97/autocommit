@@ -206,15 +206,19 @@ impl GitRepository {
     ) -> anyhow::Result<Table> {
         let repo = Repository::open_from_env()?;
         let status = repo.statuses(None)?;
-        if !status.is_empty() {
-            let mut message = String::from("The changes are already committed manually\n");
-            for entry in status.iter() {
-                if let Some(path) = entry.path() {
-                    message.push_str(&format!("{:?}: {}\n", entry.status(), path));
-                }
+        let mut modified_files = false;
+        for entry in status.iter() {
+            if entry.status().contains(git2::Status::INDEX_MODIFIED) {
+                modified_files = true;
+                break;
             }
+        }
+        
+        if !modified_files {
+            let message = String::from("No changes to commit.");
             return Err(anyhow::anyhow!(message));
         }
+
         let tree_id = repo.index()?.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
         let head = repo.head()?;
