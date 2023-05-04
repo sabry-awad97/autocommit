@@ -1,9 +1,9 @@
-use std::{env, process::Output};
+use std::process::Output;
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, RepositoryOpenFlags};
+use git2::{Repository, StatusOptions};
 use log::error;
 use prettytable::{format::consts, Cell, Row, Table};
 use tokio::process::Command;
@@ -22,41 +22,23 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn get_changed_files() -> anyhow::Result<Vec<String>> {
-        let modified = Command::new("git")
-            .arg("ls-files")
-            .arg("--modified")
-            .output()
-            .await
-            .map_err(|e| anyhow!("Command 'git ls-files --modified' failed: {}", e))?
-            .stdout;
+    pub fn get_changed_files() -> anyhow::Result<Vec<String>> {
+        let repo = Repository::open_from_env()?;
+        let mut opts = StatusOptions::new();
+        opts.include_untracked(true);
+        let statuses = repo.statuses(Some(&mut opts))?;
 
-        let others = Command::new("git")
-            .arg("ls-files")
-            .arg("--others")
-            .arg("--exclude-standard")
-            .output()
-            .await
-            .map_err(|e| {
-                anyhow!(
-                    "Command 'git ls-files --others --exclude-standard' failed: {}",
-                    e
-                )
-            })?
-            .stdout;
-
-        let mut files: Vec<_> = String::from_utf8(modified)?
-            .split('\n')
-            .chain(String::from_utf8(others)?.split('\n'))
-            .filter_map(|s| {
-                if s.is_empty() {
-                    return None;
-                }
-
-                Some(String::from(s))
-            })
-            .collect();
-
+        let mut files = Vec::new();
+        for status in statuses.iter() {
+            let path = status.path().unwrap().to_string();
+            if status.status().contains(git2::Status::WT_MODIFIED)
+                || status.status().contains(git2::Status::INDEX_MODIFIED)
+                || status.status().contains(git2::Status::WT_NEW)
+                || status.status().contains(git2::Status::INDEX_NEW)
+            {
+                files.push(path);
+            }
+        }
         files.sort();
         Ok(files)
     }

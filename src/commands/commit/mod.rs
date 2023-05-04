@@ -45,7 +45,7 @@ impl CommitCommand {
         GitRepository::assert_git_repo().await?;
         loop {
             // Get the list of changed files
-            let changed_files = GitRepository::get_changed_files().await?;
+            let changed_files = GitRepository::get_changed_files()?;
 
             if self.stage_all {
                 Self::stage_all_changed_files(&changed_files).await?;
