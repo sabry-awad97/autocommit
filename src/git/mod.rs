@@ -3,7 +3,10 @@ use std::{ffi::OsStr, path::Path};
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{DiffOptions, Repository, RepositoryOpenFlags, Signature, Status, StatusOptions, RemoteCallbacks, Cred, PushOptions};
+use git2::{
+    Cred, CredentialHelper, DiffOptions, PushOptions, RemoteCallbacks, Repository,
+    RepositoryOpenFlags, Signature, Status, StatusOptions,
+};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -310,24 +313,26 @@ impl GitRepository {
     pub fn git_push(remote: &str, branch: Option<String>) -> anyhow::Result<()> {
         let repo_path = Path::new(".");
         let repo = Repository::open(repo_path)?;
-    
+
         let mut remote = repo.find_remote(remote)?;
-    
+
         let mut callbacks = RemoteCallbacks::new();
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
-            Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+            let cred_helper = CredentialHelper::new(username_from_url.unwrap());
+            let (username, password) = cred_helper.execute().unwrap();
+            Cred::userpass_plaintext(&username, &password)
         });
-    
+
         let mut push_options = PushOptions::new();
         push_options.remote_callbacks(callbacks);
-    
+
         let refspec = match branch {
             Some(branch_name) => format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name),
             None => String::from("refs/heads/*:refs/heads/*"),
         };
-    
+
         remote.push(&[refspec.as_str()], Some(&mut push_options))?;
-    
+
         Ok(())
     }
 

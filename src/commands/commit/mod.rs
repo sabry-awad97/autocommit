@@ -228,7 +228,7 @@ impl CommitCommand {
             "Pushing changes to remote repository {}...",
             remote.green().bold()
         ));
-        GitRepository::git_push(remote, branch_name).await?;
+        GitRepository::git_push(remote, branch_name)?;
         push_spinner.stop(&format!(
             "{} Changes pushed successfully to remote repository {}.",
             "✔".green(),
