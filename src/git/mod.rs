@@ -239,16 +239,16 @@ impl GitRepository {
     ) -> anyhow::Result<Table> {
         let repo = Repository::open_from_env()?;
         let status = repo.statuses(None)?;
-        let mut modified_files = false;
+        let mut has_staged_changes = false;
         for entry in status.iter() {
-            if entry.status().contains(git2::Status::INDEX_MODIFIED) {
-                modified_files = true;
+            if entry.status() != git2::Status::CURRENT {
+                has_staged_changes = true;
                 break;
             }
         }
 
-        if !modified_files {
-            let message = String::from("No changes to commit.");
+        if !has_staged_changes {
+            let message = String::from("Failed to commit. Have you manually committed recently?");
             return Err(anyhow::anyhow!(message));
         }
 
