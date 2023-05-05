@@ -116,7 +116,7 @@ impl CommitCommand {
             ));
 
             // Get the diff of the staged files
-            let staged_diff = GitRepository::get_staged_diff(&staged_files).await?;
+            let staged_diffs = GitRepository::get_staged_file_diffs(&staged_files)?;
 
             // Generate a commit message
             let commit_message = if self.skip_chatbot {
@@ -135,13 +135,13 @@ impl CommitCommand {
                     return Err(anyhow!("No default commit message provided"));
                 }
             } else {
-                self.generate_autocommit_message(config, &staged_diff)
+                self.generate_autocommit_message(config, &staged_diffs)
                     .await?
             };
 
             // Prompt the user to confirm the commit message
             if let Ok(Some(new_message)) = self
-                .prompt_to_commit_changes(config, &staged_diff, &commit_message)
+                .prompt_to_commit_changes(config, &staged_diffs, &commit_message)
                 .await
             {
                 self.commit_changes(config, &new_message).await?;
@@ -244,7 +244,7 @@ impl CommitCommand {
     pub async fn prompt_to_commit_changes(
         &self,
         config: &AutocommitConfig,
-        staged_diff: &str,
+        staged_diffs: &[String],
         commit_message: &str,
     ) -> anyhow::Result<Option<String>> {
         let mut message = commit_message.to_string();
@@ -257,11 +257,14 @@ impl CommitCommand {
                         .default(false)
                         .interact()?;
                 if is_generate_new_message_confirmed_by_user {
-                    let mut new_content =
-                        String::from("Suggest a professional git commit message with gitmoji\n");
-                    new_content.push_str("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.");
-
-                    new_content.push_str(staged_diff);
+                    let mut new_content = Vec::new();
+                    new_content.push(
+                        "Suggest a professional git commit message with gitmoji\n".to_string(),
+                    );
+                    new_content.push("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.\n".to_string());
+                    for staged_diff in staged_diffs {
+                        new_content.push(staged_diff.clone());
+                    }
                     message = self
                         .generate_autocommit_message(config, &new_content)
                         .await?;
@@ -279,7 +282,7 @@ impl CommitCommand {
             if preview_confirmed_by_user {
                 outro(&format!(
                     "Staged diff:\n{}\n",
-                    staged_diff.color(Color::TrueColor {
+                    staged_diffs.join("").color(Color::TrueColor {
                         r: 128,
                         g: 128,
                         b: 128
@@ -319,7 +322,7 @@ impl CommitCommand {
     pub async fn generate_autocommit_message(
         &self,
         config: &AutocommitConfig,
-        content: &str,
+        content: &[String],
     ) -> anyhow::Result<String> {
         const GENERATING_MESSAGE: &str = "Generating the commit message...";
         let mut commit_spinner = spinner();
@@ -341,6 +344,7 @@ impl CommitCommand {
             _ => {
                 commit_spinner.start(GENERATING_MESSAGE);
                 let mut chat_context = ChatContext::get_initial_context(config);
+                let content = content.join("");
                 chat_context.add_message(MessageRole::User, content.to_owned());
                 commit_message = chat_context.generate_message(config).await?;
                 commit_spinner.stop("📝 Commit message generated successfully");
