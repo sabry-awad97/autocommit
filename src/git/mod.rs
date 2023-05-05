@@ -100,15 +100,13 @@ impl GitRepository {
         let mut files = Vec::new();
         for status in statuses.iter() {
             let path = status.path().unwrap().to_string();
-            if status.status().contains(Status::INDEX_MODIFIED)
-                || status.status().contains(Status::INDEX_NEW)
-            {
-                if ignore_patterns
+            if (status.status().contains(Status::INDEX_MODIFIED)
+                || status.status().contains(Status::INDEX_NEW))
+                && ignore_patterns
                     .matched_path_or_any_parents(&path, false)
                     .is_none()
-                {
-                    files.push(path);
-                }
+            {
+                files.push(path);
             }
         }
 
@@ -256,8 +254,8 @@ impl GitRepository {
         let tree = repo.find_tree(tree_id)?;
         let head = repo.head()?;
         let head_commit = head.peel_to_commit();
-        let committer = Signature::now(&name, &email)?;
-        let commit_id = if let Some(head_commit) = head_commit.ok() {
+        let committer = Signature::now(name, email)?;
+        let commit_id = if let Ok(head_commit) = head_commit {
             repo.commit(
                 Some("HEAD"),
                 &committer,
@@ -340,7 +338,7 @@ impl GitRepository {
         let remotes = repo
             .remotes()?
             .into_iter()
-            .filter_map(|remote| remote)
+            .flatten()
             .map(|remote| remote.to_owned())
             .collect();
 
