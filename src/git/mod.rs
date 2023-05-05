@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
@@ -10,6 +8,7 @@ use ignore::{
 };
 use log::error;
 use prettytable::{Cell, Row, Table};
+use std::path::Path;
 mod commit_table;
 use tokio::process::Command;
 
@@ -252,14 +251,27 @@ impl GitRepository {
             return Err(anyhow::anyhow!(message));
         }
 
-        let tree_id = if let Ok(_) = repo.head()?.peel_to_commit() {
-            repo.index()?
-                .write_tree()
-                .map_err(|e| anyhow::anyhow!("Failed to write tree: {}", e))?
+        let head = match repo.head() {
+            Ok(head) => Some(head),
+            Err(e) => {
+                if e.code() == git2::ErrorCode::UnbornBranch {
+                    None
+                } else {
+                    return Err(anyhow::anyhow!("Failed to get repository head: {}", e));
+                }
+            }
+        };
+
+        let head_commit = match head {
+            Some(head) => head.peel_to_commit().ok(),
+            None => None,
+        };
+
+        let tree_id = if let Some(_commit) = head_commit {
+            repo.index()?.write_tree()?
         } else {
             let tree = repo.treebuilder(None)?;
-            tree.write()
-                .map_err(|e| anyhow::anyhow!("Failed to write tree: {}", e))?
+            tree.write()?
         };
 
         let tree = repo
