@@ -1,9 +1,9 @@
-use std::path::Path;
+use std::{ffi::OsStr, path::Path};
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Signature, Status, StatusOptions};
+use git2::{DiffOptions, Repository, RepositoryOpenFlags, Signature, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -116,38 +116,71 @@ impl GitRepository {
         Ok(files)
     }
 
-    pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
-        let lock_files = files
-            .iter()
-            .filter(|file| file.contains(".lock") || file.contains("-lock."))
-            .map(|s| format!("  {} {}", ":(exclude)".red(), s))
-            .collect::<Vec<_>>();
+    pub fn get_staged_file_diffs(files: &[String]) -> anyhow::Result<Vec<String>> {
+        let mut diff_opts = DiffOptions::new();
+        for file in files {
+            diff_opts.pathspec(file);
+        }
 
-        if !lock_files.is_empty() {
+        let repo =
+            Repository::open_ext(".", RepositoryOpenFlags::empty(), std::path::Path::new(""))
+                .map_err(|e| anyhow!("Failed to open repository: {}", e))?;
+
+        let head_tree = repo
+            .head()
+            .and_then(|head| head.peel_to_tree())
+            .map_err(|e| anyhow!("Failed to get HEAD tree: {}", e))?;
+
+        let mut index = repo
+            .index()
+            .map_err(|e| anyhow!("Failed to get index: {}", e))?;
+
+        let staged_tree_oid = index
+            .write_tree()
+            .map_err(|e| anyhow!("Failed to write index tree: {}", e))?;
+
+        let staged_tree = repo
+            .find_tree(staged_tree_oid)
+            .map_err(|e| anyhow!("Failed to find staged tree: {}", e))?;
+
+        let diff = repo
+            .diff_tree_to_tree(Some(&head_tree), Some(&staged_tree), Some(&mut diff_opts))
+            .map_err(|e| anyhow!("Failed to get diff: {}", e))?;
+
+        let mut diff_text = Vec::new();
+        let mut excluded_files = Vec::new();
+        diff.print(git2::DiffFormat::Patch, |delta, _, line| {
+            let path = delta.new_file().path().unwrap();
+            let stem = path.file_stem().and_then(OsStr::to_str);
+            if path.extension().map_or(false, |ext| ext == "lock")
+                || stem.map_or(false, |stem| stem.ends_with("-lock"))
+            {
+                excluded_files.push(path.to_string_lossy().to_string());
+                return false;
+            }
+            let text = std::str::from_utf8(line.content()).unwrap_or("<invalid utf8>");
+            let line_text = format!("{}{}", line.origin(), text);
+            match line.origin() {
+                '+' | '-' => {
+                    diff_text.push(line_text);
+                }
+                _ => {
+                    diff_text.push(line_text[1..].to_owned());
+                }
+            }
+            true
+        })
+        .map_err(|e| anyhow!("Failed to print diff: {}", e))?;
+
+        if !excluded_files.is_empty() {
             outro("Some files are '.lock' files which are excluded by default from 'git diff':");
-            for file in &lock_files {
-                eprintln!("{}", file);
+            for file in &excluded_files {
+                eprintln!("  {} {}", ":(exclude)".red(), file);
             }
             eprintln!("No commit messages are generated for these files.");
         }
 
-        let files_without_locks = files
-            .iter()
-            .filter(|file| !file.contains(".lock") && !file.contains("-lock."))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let output = Command::new("git")
-            .arg("diff")
-            .arg("--staged")
-            .args(files_without_locks)
-            .output()
-            .await
-            .map_err(|e| anyhow!("Failed to run git command: {}", e))?
-            .stdout;
-
-        let diff = String::from_utf8_lossy(&output).trim().to_owned();
-        Ok(diff)
+        Ok(diff_text)
     }
 
     pub fn git_add(files: &[String]) -> anyhow::Result<()> {
@@ -213,7 +246,7 @@ impl GitRepository {
                 break;
             }
         }
-        
+
         if !modified_files {
             let message = String::from("No changes to commit.");
             return Err(anyhow::anyhow!(message));
