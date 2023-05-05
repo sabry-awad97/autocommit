@@ -1,7 +1,7 @@
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{DiffOptions, Repository, RepositoryOpenFlags, Signature, Status, StatusOptions};
+use git2::{DiffOptions, Repository, RepositoryOpenFlags, Signature, Status, StatusOptions, Tree};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -280,31 +280,35 @@ impl GitRepository {
         let committer = Signature::now(name, email)
             .map_err(|e| anyhow::anyhow!("Failed to create signature: {}", e))?;
 
-        let commit_id = if let Some(head_commit) = head_commit.clone() {
-            repo.commit(
+        let head_commit_clone = head_commit.clone();
+        let parent_commits = if let Some(ref head_commit) = head_commit_clone {
+            vec![head_commit]
+        } else {
+            vec![]
+        };
+        
+        let commit_id = repo
+            .commit(
                 Some("HEAD"),
                 &committer,
                 &committer,
                 message,
                 &tree,
-                &[&head_commit],
+                &parent_commits,
             )
-            .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?
-        } else {
-            repo.commit(Some("HEAD"), &committer, &committer, message, &tree, &[])
-                .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?
-        };
+            .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?;
+
         let commit = repo
             .find_commit(commit_id)
             .map_err(|e| anyhow::anyhow!("Failed to find commit: {}", e))?;
+        
         let branch_name = head
             .as_ref()
             .and_then(|head| head.shorthand())
             .unwrap_or("Unknown");
-        let commit_count = Self::get_commit_count(&repo)
-            .map_err(|e| anyhow::anyhow!("Failed to get commit count: {}", e))?;
-        let (files_changed, insertions, deletions) = Self::get_short_stat()
-            .map_err(|e| anyhow::anyhow!("Failed to get short stat: {}", e))?;
+
+        let commit_count = Self::get_commit_count(&repo)?;
+        let (files_changed, insertions, deletions) = Self::get_short_stat(&repo, &tree)?;
         let commit_hash = commit.id().to_string();
         let commit_summary = CommitSummary {
             branch_name: branch_name.to_string(),
@@ -478,41 +482,20 @@ impl GitRepository {
         Ok(count)
     }
 
-    fn get_short_stat() -> anyhow::Result<(usize, usize, usize)> {
-        // Open the repository in the current directory
-        let repo =
-            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
+    fn get_short_stat(repo: &Repository, tree: &Tree) -> anyhow::Result<(usize, usize, usize)> {
+        let head = repo.head()?;
+        let parent_commit = match head.peel_to_commit() {
+            Ok(commit) => Some(commit.parent(0).unwrap_or(commit)),
+            Err(_) => None,
+        };
 
-        // Get the HEAD commit
-        let head = repo
-            .head()?
-            .peel_to_commit()
-            .map_err(|e| anyhow!("Failed to get HEAD commit: {}", e))?;
-
-        // Get the tree for the HEAD commit
-        let tree = head
-            .tree()
-            .map_err(|e| anyhow!("Failed to get tree for HEAD commit: {}", e))?;
-
-        // Get the parent commit of the HEAD commit
-        let parent_commit = head
-            .parent(0)
-            .map_err(|e| anyhow!("Failed to get parent commit: {}", e))?;
-
-        // Get the tree for the parent commit
         let parent_tree = parent_commit
-            .tree()
-            .map_err(|e| anyhow!("Failed to get tree for parent commit: {}", e))?;
+            .as_ref()
+            .map(|commit| commit.tree())
+            .transpose()?;
 
-        // Get the diff between the parent tree and the HEAD tree
-        let diff = repo
-            .diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
-            .map_err(|e| anyhow!("Failed to get diff: {}", e))?;
-
-        // Get the number of insertions and deletions in the diff
-        let stats = diff
-            .stats()
-            .map_err(|e| anyhow!("Failed to get diff stats: {}", e))?;
+        let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+        let stats = diff.stats()?;
         let insertions = stats.insertions();
         let deletions = stats.deletions();
         let files_changed = stats.files_changed();
