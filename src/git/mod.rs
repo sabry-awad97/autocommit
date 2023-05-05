@@ -455,21 +455,39 @@ impl GitRepository {
 
     fn get_short_stat() -> anyhow::Result<(usize, usize, usize)> {
         // Open the repository in the current directory
-        let repo = Repository::open_from_env()?;
+        let repo =
+            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
 
         // Get the HEAD commit
-        let head = repo.head()?.peel_to_commit()?;
+        let head = repo
+            .head()?
+            .peel_to_commit()
+            .map_err(|e| anyhow!("Failed to get HEAD commit: {}", e))?;
 
         // Get the tree for the HEAD commit
-        let tree = head.tree()?;
+        let tree = head
+            .tree()
+            .map_err(|e| anyhow!("Failed to get tree for HEAD commit: {}", e))?;
 
-        // Get the diff between the HEAD commit and its parent
-        let parent_commit = head.parent(0)?;
-        let parent_tree = parent_commit.tree()?;
-        let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
+        // Get the parent commit of the HEAD commit
+        let parent_commit = head
+            .parent(0)
+            .map_err(|e| anyhow!("Failed to get parent commit: {}", e))?;
+
+        // Get the tree for the parent commit
+        let parent_tree = parent_commit
+            .tree()
+            .map_err(|e| anyhow!("Failed to get tree for parent commit: {}", e))?;
+
+        // Get the diff between the parent tree and the HEAD tree
+        let diff = repo
+            .diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)
+            .map_err(|e| anyhow!("Failed to get diff: {}", e))?;
 
         // Get the number of insertions and deletions in the diff
-        let stats = diff.stats()?;
+        let stats = diff
+            .stats()
+            .map_err(|e| anyhow!("Failed to get diff stats: {}", e))?;
         let insertions = stats.insertions();
         let deletions = stats.deletions();
         let files_changed = stats.files_changed();
