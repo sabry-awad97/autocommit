@@ -145,16 +145,16 @@ impl CommitCommand {
                 .await
             {
                 self.commit_changes(config, &new_message).await?;
-                // Prompt the user to select a remote repository
-                if let Some(remote) = Self::prompt_for_remote().await? {
-                    // Prompt the user to confirm the push
-                    if Self::prompt_for_push(&remote, config)? || self.skip_push_confirmation {
+                // Prompt the user to confirm the push
+                if Self::prompt_for_push(config)? || self.skip_push_confirmation {
+                    // Prompt the user to select a remote repository
+                    if let Some(remote) = Self::prompt_for_remote().await? {
                         // Pull changes from the remote repository if necessary
                         if Self::prompt_for_pull(&remote)? {
                             Self::pull_changes(&remote).await?;
                         }
                         // Push changes to the remote repository
-                        Self::push_changes(&new_message, &remote, self.branch_name.clone()).await?;
+                        Self::push_changes(&remote, self.branch_name.clone()).await?;
                         info!("Autocommit process completed successfully");
                     }
                 }
@@ -218,11 +218,7 @@ impl CommitCommand {
         Ok(())
     }
 
-    pub async fn push_changes(
-        _commit_message: &str,
-        remote: &str,
-        branch_name: Option<String>,
-    ) -> anyhow::Result<()> {
+    pub async fn push_changes(remote: &str, branch_name: Option<String>) -> anyhow::Result<()> {
         let mut push_spinner = spinner();
         push_spinner.start(&format!(
             "Pushing changes to remote repository {}...",
@@ -434,7 +430,7 @@ impl CommitCommand {
         }
     }
 
-    pub fn prompt_for_push(remote: &str, config: &AutocommitConfig) -> anyhow::Result<bool> {
+    pub fn prompt_for_push(config: &AutocommitConfig) -> anyhow::Result<bool> {
         let push_confirmed_by_user = match &config
             .config_data
             .default_push_behavior
@@ -453,8 +449,7 @@ impl CommitCommand {
                 } else {
                     Confirm::with_theme(&ColorfulTheme::default())
                         .with_prompt(format!(
-                            "Do you want to push these changes to the remote repository {}?",
-                            remote
+                            "Do you want to push these changes to remote repository?",
                         ))
                         .default(true)
                         .interact_opt()?
@@ -463,8 +458,7 @@ impl CommitCommand {
             }
             _ => Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt(format!(
-                    "Do you want to push these changes to the remote repository {}?",
-                    remote
+                    "Do you want to push these changes to remote repository?",
                 ))
                 .default(true)
                 .interact_opt()?
