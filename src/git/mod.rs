@@ -129,10 +129,16 @@ impl GitRepository {
             Repository::open_ext(".", RepositoryOpenFlags::empty(), std::path::Path::new(""))
                 .map_err(|e| anyhow!("Failed to open repository: {}", e))?;
 
-        let head_tree = repo
-            .head()
-            .and_then(|head| head.peel_to_tree())
-            .map_err(|e| anyhow!("Failed to get HEAD tree: {}", e))?;
+        let head_tree = match repo.head().and_then(|head| head.peel_to_tree()) {
+            Ok(tree) => Some(tree),
+            Err(e) => {
+                if e.code() == git2::ErrorCode::UnbornBranch {
+                    None
+                } else {
+                    return Err(anyhow!("Failed to get HEAD tree: {}", e));
+                }
+            }
+        };
 
         let mut index = repo
             .index()
@@ -147,7 +153,7 @@ impl GitRepository {
             .map_err(|e| anyhow!("Failed to find staged tree: {}", e))?;
 
         let diff = repo
-            .diff_tree_to_tree(Some(&head_tree), Some(&staged_tree), Some(&mut diff_opts))
+            .diff_tree_to_tree(head_tree.as_ref(), Some(&staged_tree), Some(&mut diff_opts))
             .map_err(|e| anyhow!("Failed to get diff: {}", e))?;
 
         let mut diff_text = Vec::new();
