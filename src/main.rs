@@ -8,8 +8,8 @@ mod utils;
 
 use commands::{get_service, Command};
 use log::{error, info};
+use term_size::dimensions;
 use utils::{intro, outro};
-
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "autocommit",
@@ -42,7 +42,10 @@ async fn main() {
                 Err(e) => {
                     error!("{}", e);
                     let message = &format!("{} {}", "✖".red(), e);
-                    let separator_length = 80;
+                    let lines: Vec<&str> = message.split('\n').collect();
+                    let longest_line = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+                    let term_width = dimensions().unwrap_or((80, 24)).0;
+                    let separator_length = longest_line.min(term_width);
                     let separator = "—".repeat(separator_length).red().bold();
                     outro(&format!(
                         "Commit message:\n{}\n{}\n{}",

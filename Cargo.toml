@@ -27,6 +27,7 @@ env_logger = "0.10.0"
 prettytable-rs = "0.10.0"
 git2 = "0.17.1"
 ignore = "0.4.20"
+term_size = "0.3.2"
 
 [dev-dependencies]
 tempfile = "3.5.0"

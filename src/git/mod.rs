@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, path::Path};
+use std::path::Path;
 
 use crate::utils::outro;
 use anyhow::anyhow;
@@ -116,8 +116,13 @@ impl GitRepository {
 
     pub fn get_staged_file_diffs(files: &[String]) -> anyhow::Result<Vec<String>> {
         let mut diff_opts = DiffOptions::new();
+        let mut excluded_files = Vec::new();
         for file in files {
-            diff_opts.pathspec(file);
+            if file.ends_with(".lock") {
+                excluded_files.push(file.clone());
+            } else {
+                diff_opts.pathspec(file);
+            }
         }
 
         let repo =
@@ -146,17 +151,8 @@ impl GitRepository {
             .map_err(|e| anyhow!("Failed to get diff: {}", e))?;
 
         let mut diff_text = Vec::new();
-        let mut excluded_files = Vec::new();
-        diff.print(git2::DiffFormat::Patch, |delta, _, line| {
-            let path = delta.new_file().path().unwrap();
-            let stem = path.file_stem().and_then(OsStr::to_str);
-            if path.extension().map_or(false, |ext| ext == "lock")
-                || stem.map_or(false, |stem| stem.ends_with("-lock"))
-            {
-                excluded_files.push(path.to_string_lossy().to_string());
-                return false;
-            }
-            let text = std::str::from_utf8(line.content()).unwrap_or("<invalid utf8>");
+        diff.print(git2::DiffFormat::Patch, |_delta, _, line| {
+            let text = String::from_utf8_lossy(line.content());
             let line_text = format!("{}{}", line.origin(), text);
             match line.origin() {
                 '+' | '-' => {
