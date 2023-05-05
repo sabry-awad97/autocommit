@@ -262,12 +262,12 @@ impl GitRepository {
             }
         };
 
-        let head_commit = match head {
+        let head_commit = match head.as_ref() {
             Some(head) => head.peel_to_commit().ok(),
             None => None,
         };
 
-        let tree_id = if let Some(_commit) = head_commit {
+        let tree_id = if let Some(_commit) = head_commit.clone() {
             repo.index()?.write_tree()?
         } else {
             let tree = repo.treebuilder(None)?;
@@ -277,13 +277,10 @@ impl GitRepository {
         let tree = repo
             .find_tree(tree_id)
             .map_err(|e| anyhow::anyhow!("Failed to find tree: {}", e))?;
-        let head = repo
-            .head()
-            .map_err(|e| anyhow::anyhow!("Failed to get repository head: {}", e))?;
-        let head_commit = head.peel_to_commit();
         let committer = Signature::now(name, email)
             .map_err(|e| anyhow::anyhow!("Failed to create signature: {}", e))?;
-        let commit_id = if let Ok(head_commit) = head_commit {
+
+        let commit_id = if let Some(head_commit) = head_commit.clone() {
             repo.commit(
                 Some("HEAD"),
                 &committer,
@@ -300,7 +297,10 @@ impl GitRepository {
         let commit = repo
             .find_commit(commit_id)
             .map_err(|e| anyhow::anyhow!("Failed to find commit: {}", e))?;
-        let branch_name = head.name().unwrap_or("Unknown");
+        let branch_name = head
+            .as_ref()
+            .and_then(|head| head.shorthand())
+            .unwrap_or("Unknown");
         let commit_count = Self::get_commit_count(&repo)
             .map_err(|e| anyhow::anyhow!("Failed to get commit count: {}", e))?;
         let (files_changed, insertions, deletions) = Self::get_short_stat()
