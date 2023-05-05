@@ -252,11 +252,25 @@ impl GitRepository {
             return Err(anyhow::anyhow!(message));
         }
 
-        let tree_id = repo.index()?.write_tree()?;
-        let tree = repo.find_tree(tree_id)?;
-        let head = repo.head()?;
+        let tree_id = if let Ok(_) = repo.head()?.peel_to_commit() {
+            repo.index()?
+                .write_tree()
+                .map_err(|e| anyhow::anyhow!("Failed to write tree: {}", e))?
+        } else {
+            let tree = repo.treebuilder(None)?;
+            tree.write()
+                .map_err(|e| anyhow::anyhow!("Failed to write tree: {}", e))?
+        };
+
+        let tree = repo
+            .find_tree(tree_id)
+            .map_err(|e| anyhow::anyhow!("Failed to find tree: {}", e))?;
+        let head = repo
+            .head()
+            .map_err(|e| anyhow::anyhow!("Failed to get repository head: {}", e))?;
         let head_commit = head.peel_to_commit();
-        let committer = Signature::now(name, email)?;
+        let committer = Signature::now(name, email)
+            .map_err(|e| anyhow::anyhow!("Failed to create signature: {}", e))?;
         let commit_id = if let Ok(head_commit) = head_commit {
             repo.commit(
                 Some("HEAD"),
@@ -265,14 +279,20 @@ impl GitRepository {
                 message,
                 &tree,
                 &[&head_commit],
-            )?
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?
         } else {
-            repo.commit(Some("HEAD"), &committer, &committer, message, &tree, &[])?
+            repo.commit(Some("HEAD"), &committer, &committer, message, &tree, &[])
+                .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?
         };
-        let commit = repo.find_commit(commit_id)?;
+        let commit = repo
+            .find_commit(commit_id)
+            .map_err(|e| anyhow::anyhow!("Failed to find commit: {}", e))?;
         let branch_name = head.name().unwrap_or("Unknown");
-        let commit_count = Self::get_commit_count(&repo)?;
-        let (files_changed, insertions, deletions) = Self::get_short_stat()?;
+        let commit_count = Self::get_commit_count(&repo)
+            .map_err(|e| anyhow::anyhow!("Failed to get commit count: {}", e))?;
+        let (files_changed, insertions, deletions) = Self::get_short_stat()
+            .map_err(|e| anyhow::anyhow!("Failed to get short stat: {}", e))?;
         let commit_hash = commit.id().to_string();
         let commit_summary = CommitSummary {
             branch_name: branch_name.to_string(),
@@ -284,7 +304,7 @@ impl GitRepository {
             insertions,
             deletions,
         };
-        let table = commit_summary.get_table()?;
+        let table = commit_summary.get_table();
 
         Ok(table)
     }

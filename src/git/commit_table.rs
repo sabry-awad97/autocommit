@@ -12,7 +12,7 @@ pub struct CommitSummary {
 }
 
 impl CommitSummary {
-    pub fn get_table(&self) -> anyhow::Result<Table> {
+    pub fn get_table(&self) -> Table {
         let mut table = Table::new();
         table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
         table.set_titles(Row::new(vec![
@@ -47,6 +47,6 @@ impl CommitSummary {
             Cell::new(&self.deletions.to_string()),
         ]));
 
-        Ok(table)
+        table
     }
 }
