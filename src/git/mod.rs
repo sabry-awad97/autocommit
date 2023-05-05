@@ -1,9 +1,9 @@
-use std::path::Path;
+use std::{ffi::OsStr, path::Path};
 
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{Repository, Signature, Status, StatusOptions};
+use git2::{DiffFormat, DiffOptions, Repository, Signature, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -116,38 +116,49 @@ impl GitRepository {
         Ok(files)
     }
 
-    pub async fn get_staged_diff(files: &[String]) -> anyhow::Result<String> {
-        let lock_files = files
-            .iter()
-            .filter(|file| file.contains(".lock") || file.contains("-lock."))
-            .map(|s| format!("  {} {}", ":(exclude)".red(), s))
-            .collect::<Vec<_>>();
+    pub async fn get_staged_diff(staged_files: &[String]) -> anyhow::Result<String> {
+        let repo = Repository::open_from_env()?;
+        let mut diff_opts = DiffOptions::new();
+        if staged_files.is_empty() {
+            // If there are no staged files, include all files in the repository
+            diff_opts.include_untracked(true);
+        } else {
+            // Otherwise, include only the staged files
+            for file in staged_files {
+                println!("{} {}", "Getting staged diff for file".yellow(), file);
+                diff_opts.pathspec(file);
+            }
+        }
 
-        if !lock_files.is_empty() {
+        let mut diff = repo.diff_index_to_workdir(None, Some(&mut diff_opts))?;
+        diff.find_similar(None)?;
+
+        let mut diff_text = String::new();
+        let mut excluded_files = Vec::new();
+
+        diff.print(DiffFormat::Patch, |delta, _hunk, line| {
+            let path = delta.new_file().path().unwrap();
+            let stem = path.file_stem().and_then(OsStr::to_str);
+            if path.extension().map_or(false, |ext| ext == "lock")
+                || stem.map_or(false, |stem| stem.ends_with("-lock"))
+            {
+                excluded_files.push(path.to_string_lossy().to_string());
+                return false;
+            }
+            let content = String::from_utf8_lossy(line.content());
+            diff_text.push_str(&format!("{}{}", line.origin(), content));
+            true
+        })?;
+
+        if !excluded_files.is_empty() {
             outro("Some files are '.lock' files which are excluded by default from 'git diff':");
-            for file in &lock_files {
-                eprintln!("{}", file);
+            for file in &excluded_files {
+                eprintln!("  {} {}", ":(exclude)".red(), file);
             }
             eprintln!("No commit messages are generated for these files.");
         }
 
-        let files_without_locks = files
-            .iter()
-            .filter(|file| !file.contains(".lock") && !file.contains("-lock."))
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let output = Command::new("git")
-            .arg("diff")
-            .arg("--staged")
-            .args(files_without_locks)
-            .output()
-            .await
-            .map_err(|e| anyhow!("Failed to run git command: {}", e))?
-            .stdout;
-
-        let diff = String::from_utf8_lossy(&output).trim().to_owned();
-        Ok(diff)
+        Ok(diff_text)
     }
 
     pub fn git_add(files: &[String]) -> anyhow::Result<()> {
@@ -213,7 +224,7 @@ impl GitRepository {
                 break;
             }
         }
-        
+
         if !modified_files {
             let message = String::from("No changes to commit.");
             return Err(anyhow::anyhow!(message));
