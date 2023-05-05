@@ -437,12 +437,18 @@ impl GitRepository {
     }
 
     pub fn get_commit_count(repo: &Repository) -> anyhow::Result<usize> {
-        let head = repo.head()?;
+        let head = repo
+            .head()
+            .map_err(|e| anyhow!("Failed to get HEAD reference: {}", e))?;
         let head_oid = head
             .target()
             .ok_or_else(|| anyhow!("HEAD is not a direct reference"))?;
-        let mut revwalk = repo.revwalk()?;
-        revwalk.push(head_oid)?;
+        let mut revwalk = repo
+            .revwalk()
+            .map_err(|e| anyhow!("Failed to create Revwalk object: {}", e))?;
+        revwalk
+            .push(head_oid)
+            .map_err(|e| anyhow!("Failed to push HEAD commit onto Revwalk: {}", e))?;
         let count = revwalk.count();
         Ok(count)
     }
