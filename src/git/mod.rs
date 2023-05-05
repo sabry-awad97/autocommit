@@ -351,20 +351,22 @@ impl GitRepository {
     }
 
     pub fn get_git_remotes() -> anyhow::Result<Vec<String>> {
-        let repo = Repository::open_from_env().map_err(|err| {
-            anyhow!(
-                "The current working directory is not a Git repository: {}",
-                err
-            )
-        })?;
-        let remotes = repo
-            .remotes()?
+        let repo = Repository::open_from_env()
+            .map_err(|err| anyhow!("Failed to open repository: {}", err))?;
+
+        let remotes: Vec<_> = repo
+            .remotes()
+            .map_err(|err| anyhow!("Failed to get remotes: {}", err))?
             .into_iter()
             .flatten()
             .map(|remote| remote.to_owned())
             .collect();
 
-        Ok(remotes)
+        if remotes.is_empty() {
+            Err(anyhow!("No remotes configured for repository"))
+        } else {
+            Ok(remotes)
+        }
     }
 
     pub fn get_git_user_email() -> anyhow::Result<String> {
