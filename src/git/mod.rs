@@ -368,17 +368,28 @@ impl GitRepository {
     }
 
     pub fn get_git_user_email() -> anyhow::Result<String> {
-        let repo = Repository::open_from_env()?;
-        let config = repo.config()?;
-        let email = config.get_string("user.email")?;
+        let repo =
+            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
+        let config = repo
+            .config()
+            .map_err(|e| anyhow!("Failed to get repository configuration: {}", e))?;
+        let email = config
+            .get_string("user.email")
+            .map_err(|e| anyhow!("Failed to get user email from configuration: {}", e))?;
+
         Ok(email)
     }
 
     pub fn get_git_user_name() -> anyhow::Result<String> {
-        let repo = Repository::open_from_env()?;
-        let config = repo.config()?;
-        let email = config.get_string("user.name")?;
-        Ok(email)
+        let repo =
+            Repository::open_from_env().map_err(|e| anyhow!("Failed to open repository: {}", e))?;
+        let config = repo
+            .config()
+            .map_err(|e| anyhow!("Failed to get repository configuration: {}", e))?;
+        let name = config
+            .get_string("user.name")
+            .map_err(|e| anyhow!("Failed to get user name from configuration: {}", e))?;
+        Ok(name)
     }
 
     pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
