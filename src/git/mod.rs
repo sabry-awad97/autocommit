@@ -1,7 +1,7 @@
 use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
-use git2::{DiffOptions, Repository, RepositoryOpenFlags, Signature, Status, StatusOptions, Tree};
+use git2::{DiffOptions, Repository, RepositoryOpenFlags, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
@@ -231,11 +231,7 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn get_commit_summary_table(
-        message: &str,
-        name: &str,
-        email: &str,
-    ) -> anyhow::Result<Table> {
+    pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<()> {
         let repo = Repository::open_from_env()?;
         let status = repo.statuses(None)?;
         let mut has_staged_changes = false;
@@ -251,68 +247,36 @@ impl GitRepository {
             return Err(anyhow::anyhow!(message));
         }
 
-        let head = match repo.head() {
-            Ok(head) => Some(head),
-            Err(e) => {
-                if e.code() == git2::ErrorCode::UnbornBranch {
-                    None
-                } else {
-                    return Err(anyhow::anyhow!("Failed to get repository head: {}", e));
-                }
-            }
-        };
+        let output = Command::new("git")
+            .arg("commit")
+            .arg("-m")
+            .arg(message)
+            .arg("--author")
+            .arg(format!("{} <{}>", name, email))
+            .output()
+            .await
+            .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if !output.status.success() {
+            error!("Failed to commit changes: {}", stderr);
+            return Err(anyhow!(stderr));
+        }
 
-        let head_commit = match head.as_ref() {
-            Some(head) => head.peel_to_commit().ok(),
-            None => None,
-        };
+        Ok(())
+    }
 
-        let tree_id = if let Some(_commit) = head_commit.clone() {
-            repo.index()?.write_tree()?
-        } else {
-            let tree = repo.treebuilder(None)?;
-            tree.write()?
-        };
-
-        let tree = repo
-            .find_tree(tree_id)
-            .map_err(|e| anyhow::anyhow!("Failed to find tree: {}", e))?;
-        let committer = Signature::now(name, email)
-            .map_err(|e| anyhow::anyhow!("Failed to create signature: {}", e))?;
-
-        let head_commit_clone = head_commit.clone();
-        let parent_commits = if let Some(ref head_commit) = head_commit_clone {
-            vec![head_commit]
-        } else {
-            vec![]
-        };
-        
-        let commit_id = repo
-            .commit(
-                Some("HEAD"),
-                &committer,
-                &committer,
-                message,
-                &tree,
-                &parent_commits,
-            )
-            .map_err(|e| anyhow::anyhow!("Failed to commit changes: {}", e))?;
-
-        let commit = repo
-            .find_commit(commit_id)
-            .map_err(|e| anyhow::anyhow!("Failed to find commit: {}", e))?;
-        
-        let branch_name = head
-            .as_ref()
-            .and_then(|head| head.shorthand())
-            .unwrap_or("Unknown");
+    pub async fn get_commit_summary_table(name: &str, email: &str) -> anyhow::Result<Table> {
+        let repo = Repository::open_from_env()?;
+        let head = repo.head()?;
+        let latest_commit = head.peel_to_commit()?;
+        let latest_commit_id = latest_commit.id();
+        let branch_name = head.shorthand().unwrap_or("Unknown");
 
         let commit_count = Self::get_commit_count(&repo)?;
-        let (files_changed, insertions, deletions) = Self::get_short_stat(&repo, &tree)?;
-        let commit_hash = commit.id().to_string();
+        let (files_changed, insertions, deletions) = Self::get_short_stat()?;
         let commit_summary = CommitSummary {
             branch_name: branch_name.to_string(),
-            commit_hash,
+            commit_hash: latest_commit_id.to_string(),
             author_name: name.to_string(),
             author_email: email.to_string(),
             commit_count,
@@ -482,19 +446,22 @@ impl GitRepository {
         Ok(count)
     }
 
-    fn get_short_stat(repo: &Repository, tree: &Tree) -> anyhow::Result<(usize, usize, usize)> {
-        let head = repo.head()?;
-        let parent_commit = match head.peel_to_commit() {
-            Ok(commit) => Some(commit.parent(0).unwrap_or(commit)),
-            Err(_) => None,
-        };
+    fn get_short_stat() -> anyhow::Result<(usize, usize, usize)> {
+        // Open the repository in the current directory
+        let repo = Repository::open_from_env()?;
 
-        let parent_tree = parent_commit
-            .as_ref()
-            .map(|commit| commit.tree())
-            .transpose()?;
+        // Get the HEAD commit
+        let head = repo.head()?.peel_to_commit()?;
 
-        let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+        // Get the tree for the HEAD commit
+        let tree = head.tree()?;
+
+        // Get the diff between the HEAD commit and its parent
+        let parent_commit = head.parent(0)?;
+        let parent_tree = parent_commit.tree()?;
+        let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
+
+        // Get the number of insertions and deletions in the diff
         let stats = diff.stats()?;
         let insertions = stats.insertions();
         let deletions = stats.deletions();
