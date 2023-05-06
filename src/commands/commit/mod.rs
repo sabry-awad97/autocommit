@@ -477,7 +477,7 @@ impl CommitCommand {
         let pull_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
                 "Do you want to pull changes from the remote repository {} before pushing?",
-                remote
+                remote.green()
             ))
             .default(true)
             .interact_opt()?
