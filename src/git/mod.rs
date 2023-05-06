@@ -457,8 +457,11 @@ impl GitRepository {
         let tree = head.tree()?;
 
         // Get the diff between the HEAD commit and its parent
-        let parent_commit = head.parent(0)?;
-        let parent_tree = parent_commit.tree()?;
+        let parent_commit = head.parent(0);
+        let parent_tree = match parent_commit {
+            Ok(commit) => commit.tree()?,
+            Err(_) => return Ok((0, 0, 0)), // Return 0 for all values if parent commit doesn't exist
+        };
         let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
 
         // Get the number of insertions and deletions in the diff
