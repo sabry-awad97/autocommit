@@ -263,14 +263,7 @@ impl GitRepository {
             return Err(anyhow!(stderr));
         }
 
-        let lines: Vec<&str> = stdout.trim().split('\n').collect();
-        let commit_info = lines[0].trim();
-        let commit_hash = commit_info.split(' ').nth(1).unwrap_or("");
-        let branch_name = commit_info.split(' ').nth(0).unwrap_or("");
-        let commit_info = format!("{} {}", branch_name, commit_hash);
-        let last_line = lines.last().unwrap_or(&"").trim();
-        let output = format!("{} {}", commit_info, last_line);
-        Ok(output)
+        Ok(stdout.trim().to_string())
     }
 
     pub async fn get_commit_summary_table(name: &str, email: &str) -> anyhow::Result<Table> {
