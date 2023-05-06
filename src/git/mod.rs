@@ -231,7 +231,7 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<()> {
+    pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<String> {
         let repo = Repository::open_from_env()?;
         let status = repo.statuses(None)?;
         let mut has_staged_changes = false;
@@ -256,13 +256,21 @@ impl GitRepository {
             .output()
             .await
             .map_err(|e| anyhow!("Command 'git commit' failed: {}", e))?;
+        let stdout = String::from_utf8(output.stdout)?;
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         if !output.status.success() {
             error!("Failed to commit changes: {}", stderr);
             return Err(anyhow!(stderr));
         }
 
-        Ok(())
+        let lines: Vec<&str> = stdout.trim().split('\n').collect();
+        let commit_info = lines[0].trim();
+        let commit_hash = commit_info.split(' ').nth(1).unwrap_or("");
+        let branch_name = commit_info.split(' ').nth(0).unwrap_or("");
+        let commit_info = format!("{} {}", branch_name, commit_hash);
+        let last_line = lines.last().unwrap_or(&"").trim();
+        let output = format!("{} {}", commit_info, last_line);
+        Ok(output)
     }
 
     pub async fn get_commit_summary_table(name: &str, email: &str) -> anyhow::Result<Table> {
@@ -272,7 +280,7 @@ impl GitRepository {
         let latest_commit_id = latest_commit.id();
         let branch_name = head.shorthand().unwrap_or("Unknown");
 
-        let commit_count = Self::get_commit_count(&repo)?;
+        let commit_count = Self::get_commit_count()?;
         let (files_changed, insertions, deletions) = Self::get_short_stat()?;
         let commit_summary = CommitSummary {
             branch_name: branch_name.to_string(),
@@ -429,7 +437,8 @@ impl GitRepository {
         Ok(table.to_string())
     }
 
-    pub fn get_commit_count(repo: &Repository) -> anyhow::Result<usize> {
+    pub fn get_commit_count() -> anyhow::Result<usize> {
+        let repo = Repository::open_from_env()?;
         let head = repo
             .head()
             .map_err(|e| anyhow!("Failed to get HEAD reference: {}", e))?;
