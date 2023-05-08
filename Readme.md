@@ -8,9 +8,17 @@ Autocommit is a CLI tool that helps you create professional and meaningful commi
 
 1. Install Rust (<https://www.rust-lang.org/tools/install>)
 2. Clone the repository and navigate to its root directory
-3. To install autocommit globally, you can use [Cargo](https://doc.rust-lang.org/cargo/), the Rust package manager:
+3. Install Git from the [official website](https://git-scm.com/downloads).
+4. Once you have Git installed, you can install Autocommit using Cargo [Cargo](https://doc.rust-lang.org/cargo/), the Rust package manager:
 
    ```shell
    cargo install --path .
    ```
 
+## Usage
+
+After Autocommit is installed, you can use the autocommit command to set up automatic commits for your Git repositories.
+
+```shell
+autocommit [SUBCOMMAND]
+```
