@@ -40,3 +40,34 @@ Use the `commit` command to create a new commit.
 ```bash
 autocommit commit
 ```
+
+## Contributing
+
+Thank you for considering contributing to `autocommit`!
+
+If you find a bug or would like to request a new feature, please open an issue on GitHub.
+
+If you would like to contribute code, follow these steps to contribute:
+
+1. Fork this repository and clone it to your local machine.
+2. Create a new branch for your changes: `git checkout -b my-feature-branch`.
+3. Make your changes and ensure that the tests pass: `cargo test`.
+4. Commit your changes with a descriptive commit message: `git commit -m "feat: Add new feature"`.
+5. Push your changes to the remote branch: `git push origin my-feature-branch`.
+6. Create a new pull request and describe your changes.
+
+When submitting a pull request, please include a detailed description of the changes you made, along with any relevant code comments or documentation. Additionally, please make sure that your changes are fully tested and do not break any existing functionality.
+
+To run the test suite, you can use the following command:
+
+```sh
+cargo test
+```
+
+This command will run all unit tests in the project and report any failures or errors.
+
+Your code will be reviewed by other contributors, and if accepted, will be merged into the main branch.
+
+## License
+
+This program is licensed under the [MIT License](https://opensource.org/licenses/MIT). Feel free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this program, subject to the conditions of the license.
