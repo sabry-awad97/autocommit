@@ -85,7 +85,7 @@ Here are the available configuration keys that can be used with autocommit-confi
 - `name`: a string that stores the name of the Git user.
 - `email`: a string that stores the email address of the Git user.
 - `open_ai_api_key`: a string that stores an API key for OpenAI models.
-- `api_host`: a string that specifies the host address for the Git API.
+- `api_host`: a string that specifies the host address for the OpenAI API.
 - `open_ai_model`: an optional string that specifies the OpenAI model to use.
 
 ### Examples
