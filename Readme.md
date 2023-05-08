@@ -88,6 +88,50 @@ Here are the available configuration keys that can be used with autocommit-confi
 - `api_host`: a string that specifies the host address for the Git API.
 - `open_ai_model`: an optional string that specifies the OpenAI model to use.
 
+### Examples
+
+To retrieve all configuration values:
+
+```sh
+autocommit config get
+```
+
+To retrieve the values of specific keys:
+
+```sh
+autocommit config get --keys name email
+```
+
+To set the value of a configuration key:
+
+```sh
+autocommit config set emoji=true
+```
+
+To set multiple configuration keys:
+
+```sh
+autocommit config set emoji=true description=false
+```
+
+To reset all configuration values:
+
+```sh
+autocommit config reset
+```
+
+To print the configuration values as environment variables:
+
+```sh
+autocommit config env
+```
+
+To print the configuration values as environment variables for a specific shell:
+
+```sh
+autocommit config env --shell=bash
+```
+
 ## Contributing
 
 Thank you for considering contributing to `autocommit`!
