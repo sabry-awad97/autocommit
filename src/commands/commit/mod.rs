@@ -17,14 +17,6 @@ mod chat_context;
 pub struct CommitCommand {
     #[structopt(short, long)]
     stage_all: bool,
-    #[structopt(short, long)]
-    branch_name: Option<String>,
-    #[structopt(long)]
-    skip_chatbot: bool,
-    #[structopt(long)]
-    skip_push_confirmation: bool,
-    #[structopt(long)]
-    skip_commit_confirmation: bool,
 }
 
 impl CommitCommand {
@@ -119,25 +111,9 @@ impl CommitCommand {
             let staged_diffs = GitRepository::get_staged_file_diffs(&staged_files)?;
 
             // Generate a commit message
-            let commit_message = if self.skip_chatbot {
-                if let Some(default_message) = config
-                    .config_data
-                    .default_commit_message
-                    .get_value_ref()
-                    .get_inner_value()
-                {
-                    outro(&format!(
-                        "Using default commit message:\n{}\n",
-                        default_message
-                    ));
-                    default_message.clone()
-                } else {
-                    return Err(anyhow!("No default commit message provided"));
-                }
-            } else {
-                self.generate_autocommit_message(config, &staged_diffs)
-                    .await?
-            };
+            let commit_message = self
+                .generate_autocommit_message(config, &staged_diffs)
+                .await?;
 
             // Prompt the user to confirm the commit message
             if let Ok(Some(new_message)) = self
@@ -146,7 +122,7 @@ impl CommitCommand {
             {
                 self.commit_changes(config, &new_message).await?;
                 // Prompt the user to confirm the push
-                if Self::prompt_for_push()? || self.skip_push_confirmation {
+                if Self::prompt_for_push()? {
                     // Prompt the user to select a remote repository
                     if let Some(remote) = Self::prompt_for_remote().await? {
                         // Pull changes from the remote repository if necessary
@@ -154,7 +130,7 @@ impl CommitCommand {
                             Self::pull_changes(&remote).await?;
                         }
                         // Push changes to the remote repository
-                        Self::push_changes(&remote, self.branch_name.clone()).await?;
+                        Self::push_changes(&remote).await?;
                         info!("Autocommit process completed successfully");
                     }
                 }
@@ -181,10 +157,6 @@ impl CommitCommand {
         let mut commit_spinner = spinner();
         commit_spinner.start(COMMITTING_CHANGES);
 
-        if let Some(branch_name) = &self.branch_name {
-            GitRepository::git_checkout_new_branch(branch_name).await?;
-            GitRepository::git_add_all()?;
-        }
         let name = config.config_data.name.get_value_ref();
         let email = config.config_data.email.get_value_ref();
 
@@ -222,13 +194,13 @@ impl CommitCommand {
         Ok(())
     }
 
-    pub async fn push_changes(remote: &str, branch_name: Option<String>) -> anyhow::Result<()> {
+    pub async fn push_changes(remote: &str) -> anyhow::Result<()> {
         let mut push_spinner = spinner();
         push_spinner.start(&format!(
             "Pushing changes to remote repository {}...",
             remote.green().bold()
         ));
-        GitRepository::git_push(remote, branch_name).await?;
+        GitRepository::git_push(remote).await?;
         push_spinner.stop(&format!(
             "{} Changes pushed successfully to remote repository {}.",
             "✔".green(),
@@ -249,55 +221,52 @@ impl CommitCommand {
     ) -> anyhow::Result<Option<String>> {
         let mut message = commit_message.to_string();
 
-        if !self.skip_commit_confirmation {
-            loop {
-                let is_generate_new_message_confirmed_by_user =
-                    Confirm::with_theme(&ColorfulTheme::default())
-                        .with_prompt("Do you want to generate a new commit message?")
-                        .default(false)
-                        .interact()?;
-                if is_generate_new_message_confirmed_by_user {
-                    let mut new_content = Vec::new();
-                    new_content.push(
-                        "Suggest a professional git commit message with gitmoji\n".to_string(),
-                    );
-                    new_content.push("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.\n".to_string());
-                    for staged_diff in staged_diffs {
-                        new_content.push(staged_diff.clone());
-                    }
-                    message = self
-                        .generate_autocommit_message(config, &new_content)
-                        .await?;
-                } else {
-                    break;
+        loop {
+            let is_generate_new_message_confirmed_by_user =
+                Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt("Do you want to generate a new commit message?")
+                    .default(false)
+                    .interact()?;
+            if is_generate_new_message_confirmed_by_user {
+                let mut new_content = Vec::new();
+                new_content
+                    .push("Suggest a professional git commit message with gitmoji\n".to_string());
+                new_content.push("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.\n".to_string());
+                for staged_diff in staged_diffs {
+                    new_content.push(staged_diff.clone());
                 }
+                message = self
+                    .generate_autocommit_message(config, &new_content)
+                    .await?;
+            } else {
+                break;
             }
+        }
 
-            let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Do you want to preview the changes before committing?")
-                .default(false)
-                .interact_opt()?
-                .unwrap_or(false);
+        let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt("Do you want to preview the changes before committing?")
+            .default(false)
+            .interact_opt()?
+            .unwrap_or(false);
 
-            if preview_confirmed_by_user {
-                outro(&format!(
-                    "Staged diff:\n{}\n",
-                    staged_diffs.join("").color(Color::TrueColor {
-                        r: 128,
-                        g: 128,
-                        b: 128
-                    })
-                ));
+        if preview_confirmed_by_user {
+            outro(&format!(
+                "Staged diff:\n{}\n",
+                staged_diffs.join("").color(Color::TrueColor {
+                    r: 128,
+                    g: 128,
+                    b: 128
+                })
+            ));
 
-                let commit_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Do you want to commit these changes?")
-                    .default(true)
-                    .interact_opt()?;
+            let commit_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt("Do you want to commit these changes?")
+                .default(true)
+                .interact_opt()?;
 
-                if let Some(false) = commit_confirmed_by_user {
-                    outro("Commit cancelled, exiting...");
-                    return Ok(None);
-                }
+            if let Some(false) = commit_confirmed_by_user {
+                outro("Commit cancelled, exiting...");
+                return Ok(None);
             }
         }
 

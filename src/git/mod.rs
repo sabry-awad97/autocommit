@@ -308,12 +308,9 @@ impl GitRepository {
         Ok(())
     }
 
-    pub async fn git_push(remote: &str, branch: Option<String>) -> anyhow::Result<()> {
+    pub async fn git_push(remote: &str) -> anyhow::Result<()> {
         let mut command = Command::new("git");
         command.arg("push").arg("--verbose").arg(remote);
-        if let Some(branch_name) = branch {
-            command.arg(branch_name);
-        }
         let output = command.output().await?;
 
         if !output.status.success() {
@@ -373,26 +370,6 @@ impl GitRepository {
             .get_string("user.name")
             .map_err(|e| anyhow!("Failed to get user name from configuration: {}", e))?;
         Ok(name)
-    }
-
-    pub async fn git_checkout_new_branch(branch_name: &str) -> anyhow::Result<()> {
-        let mut cmd = Command::new("git");
-        cmd.arg("checkout").arg("-b").arg(branch_name);
-        let output = cmd.output().await?;
-
-        if !output.status.success() {
-            let output: String = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let error_message =
-                format!("Failed to checkout new branch {}: {}", branch_name, output);
-            error!("{}", error_message);
-            anyhow::bail!(
-                "Failed to checkout new branch {}: {}",
-                branch_name,
-                error_message
-            );
-        }
-
-        Ok(())
     }
 
     pub async fn git_status() -> anyhow::Result<String> {
