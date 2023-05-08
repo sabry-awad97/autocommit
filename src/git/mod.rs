@@ -1,4 +1,3 @@
-use crate::utils::outro;
 use anyhow::anyhow;
 use colored::Colorize;
 use git2::{DiffOptions, Repository, RepositoryOpenFlags, Status, StatusOptions};
@@ -170,14 +169,6 @@ impl GitRepository {
             true
         })
         .map_err(|e| anyhow!("Failed to print diff: {}", e))?;
-
-        if !excluded_files.is_empty() {
-            outro("Some files are '.lock' files which are excluded by default from 'git diff':");
-            for file in &excluded_files {
-                eprintln!("  {} {}", ":(exclude)".red(), file);
-            }
-            eprintln!("No commit messages are generated for these files.");
-        }
 
         Ok(diff_text)
     }
