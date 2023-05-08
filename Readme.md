@@ -25,20 +25,54 @@ autocommit [SUBCOMMAND]
 
 ### Subcommands
 
-The `config` subcommand
-
 Use the `config` command to set your preferences for autocommit.
 
 ```shell
 autocommit config
 ```
 
-The `commit` subcommand
-
 Use the `commit` command to create a new commit.
 
 ```bash
 autocommit commit
+```
+
+## Config Subcommand
+
+It allows users to retrieve, modify and reset configuration values that are automatically saved to a configuration file on the user's machine.
+This command supports several sub-commands, each with its own set of arguments:
+
+### get
+
+The `get` sub-command retrieves the values of one or more configuration keys.
+If no keys are provided, all configuration keys and their respective values are printed to the console.
+
+```sh
+autocommit config get -h
+```
+
+### set
+
+The set sub-command allows you to modify the values of one or more configuration keys. You can set multiple keys by providing a key-value pair for each one.
+
+```sh
+autocommit config set -h
+```
+
+### reset
+
+The `reset` sub-command resets all configuration values to their default values.
+
+```sh
+autocommit config reset -h
+```
+
+### env
+
+The `env` sub-command prints the configuration values as environment variables, which can be used in shell scripts.
+
+```sh
+autocommit config env -h
 ```
 
 ## Contributing
