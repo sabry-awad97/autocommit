@@ -132,6 +132,20 @@ To print the configuration values as environment variables for a specific shell:
 autocommit config env --shell=bash
 ```
 
+## Commit Subcommand
+
+To use Autocommit, navigate to the root directory of your Git repository and run the following command:
+
+```sh
+autocommit commit
+```
+
+This will start the Autocommit process, which will prompt you to select the files you want to stage, generate a commit message with AI, and push changes to a remote repository.
+
+### Configuration
+
+Autocommit can be configured using a configuration file located at `~/.autocommit.toml`.
+
 ## Contributing
 
 Thank you for considering contributing to `autocommit`!
