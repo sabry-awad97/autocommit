@@ -2,7 +2,7 @@
 
 [![GitHub license](https://img.shields.io/github/license/sabry-awad97/autocommit)](https://github.com/sabry-awad97/autocommit/blob/main/LICENSE)
 
-Autocommit is a CLI tool that helps you create professional and meaningful commits with ease. It uses AI to generate impressive commit messages in seconds, so you can take control of your code history and make it shine!
+🚀 Autocommit is a CLI tool that helps you create professional and meaningful commits with ease. It uses 🤖 AI to generate impressive commit messages in seconds, so you can take control of your code history and make it shine!
 
 ## Installation
 
@@ -37,12 +37,12 @@ Use the `commit` command to create a new commit.
 autocommit commit
 ```
 
-## Config Subcommand
+## 🛠️ Config Subcommand
 
 It allows users to retrieve, modify and reset configuration values that are automatically saved to a configuration file on the user's machine.
 This command supports several sub-commands, each with its own set of arguments:
 
-### get
+### 📜 get
 
 The `get` sub-command retrieves the values of one or more configuration keys.
 If no keys are provided, all configuration keys and their respective values are printed to the console.
@@ -51,7 +51,7 @@ If no keys are provided, all configuration keys and their respective values are 
 autocommit config get -h
 ```
 
-### set
+### 📐 set
 
 The set sub-command allows you to modify the values of one or more configuration keys. You can set multiple keys by providing a key-value pair for each one.
 
@@ -59,7 +59,7 @@ The set sub-command allows you to modify the values of one or more configuration
 autocommit config set -h
 ```
 
-### reset
+### 🔄 reset
 
 The `reset` sub-command resets all configuration values to their default values.
 
@@ -67,7 +67,7 @@ The `reset` sub-command resets all configuration values to their default values.
 autocommit config reset -h
 ```
 
-### env
+### 🌐 env
 
 The `env` sub-command prints the configuration values as environment variables, which can be used in shell scripts.
 
@@ -75,7 +75,7 @@ The `env` sub-command prints the configuration values as environment variables, 
 autocommit config env -h
 ```
 
-### Config Keys
+### 🚪 Config Keys
 
 Here are the available configuration keys that can be used with autocommit-config:
 
@@ -88,7 +88,7 @@ Here are the available configuration keys that can be used with autocommit-confi
 - `api_host`: a string that specifies the host address for the OpenAI API.
 - `open_ai_model`: an optional string that specifies the OpenAI model to use.
 
-### Examples
+### 🌟 Examples
 
 To retrieve all configuration values:
 
@@ -132,23 +132,23 @@ To print the configuration values as environment variables for a specific shell:
 autocommit config env --shell=bash
 ```
 
-## Commit Subcommand
+## ✨ Commit Subcommand
 
-To use Autocommit, navigate to the root directory of your Git repository and run the following command:
+👉 To use Autocommit, navigate to the root directory of your Git repository and run the following command:
 
 ```sh
 autocommit commit
 ```
 
-This will start the Autocommit process, which will prompt you to select the files you want to stage, generate a commit message with AI, and push changes to a remote repository.
+🚀 This will start the Autocommit process, which will prompt you to select the files you want to stage, generate a commit message with AI, and push changes to a remote repository.
 
-### Configuration
+### 🔧 Configuration
 
 Autocommit can be configured using a configuration file located at `~/.autocommit.toml`.
 
-### Ignore files
+### 🙈 Ignore files
 
-You can ignore files from submission to OpenAI by creating a `.autoignore` file in your root directory. For example:
+To ignore files from submission to OpenAI by creating a `.autoignore` file in your root directory. For example:
 
 ```sh
 /target
@@ -158,13 +158,13 @@ You can ignore files from submission to OpenAI by creating a `.autoignore` file 
 
 By default, autocommit ignores files matching: `*-lock.*` and `*.lock`
 
-## Contributing
+## 🤝 Contributing
 
-Thank you for considering contributing to `autocommit`!
+Thank you for considering contributing to `autocommit`!.
 
-If you find a bug or would like to request a new feature, please open an issue on GitHub.
+🐛 If you find a bug or would like to request a new feature, please open an issue on GitHub.
 
-If you would like to contribute code, follow these steps to contribute:
+👨‍💻 If you would like to contribute code, follow these steps to contribute:
 
 1. Fork this repository and clone it to your local machine.
 2. Create a new branch for your changes: `git checkout -b my-feature-branch`.
@@ -175,7 +175,7 @@ If you would like to contribute code, follow these steps to contribute:
 
 When submitting a pull request, please include a detailed description of the changes you made, along with any relevant code comments or documentation. Additionally, please make sure that your changes are fully tested and do not break any existing functionality.
 
-To run the test suite, you can use the following command:
+📝 To run the test suite, you can use the following command:
 
 ```sh
 cargo test
@@ -183,8 +183,8 @@ cargo test
 
 This command will run all unit tests in the project and report any failures or errors.
 
-Your code will be reviewed by other contributors, and if accepted, will be merged into the main branch.
+👀 Your code will be reviewed by other contributors, and if accepted, will be merged into the main branch.
 
-## License
+## 📄 License
 
 This program is licensed under the [MIT License](https://opensource.org/licenses/MIT). Feel free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this program, subject to the conditions of the license.
