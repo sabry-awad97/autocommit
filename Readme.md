@@ -146,6 +146,18 @@ This will start the Autocommit process, which will prompt you to select the file
 
 Autocommit can be configured using a configuration file located at `~/.autocommit.toml`.
 
+### Ignore files
+
+You can ignore files from submission to OpenAI by creating a `.autoignore` file in your root directory. For example:
+
+```sh
+/target
+.env
+**/*.jpg
+```
+
+By default, autocommit ignores files matching: `*-lock.*` and `*.lock`
+
 ## Contributing
 
 Thank you for considering contributing to `autocommit`!
