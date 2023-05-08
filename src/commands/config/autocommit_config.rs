@@ -12,7 +12,7 @@ use crate::{git::GitRepository, i18n::language::Language};
 
 use super::{
     config_data::ConfigData,
-    config_keys::{ConfigItem, ConfigKey, DefaultBehaviorOption, DefaultLanguage, OptionString},
+    config_keys::{ConfigItem, ConfigKey, DefaultLanguage, OptionString},
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -32,8 +32,6 @@ impl AutocommitConfig {
             name: ConfigItem::new(name),
             email: ConfigItem::new(email),
             default_commit_message: ConfigItem::new(OptionString::default()),
-            default_push_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
-            default_commit_behavior: ConfigItem::new(DefaultBehaviorOption::default()),
             open_ai_api_key: ConfigItem::new(OptionString::default()),
             api_host: ConfigItem::new(String::from("https://api.openai.com")),
             open_ai_model: ConfigItem::new(OptionString::default()),

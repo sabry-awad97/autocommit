@@ -1,8 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::commands::config::config_keys::{
-    ConfigItem, DefaultBehaviorOption, DefaultLanguage, OptionString,
-};
+use crate::commands::config::config_keys::{ConfigItem, DefaultLanguage, OptionString};
 
 use super::config_keys::{ConfigKey, ConfigValue};
 
@@ -20,8 +18,6 @@ pub struct ConfigData {
     pub open_ai_api_key: ConfigItem<OptionString>,
     pub api_host: ConfigItem<String>,
     pub open_ai_model: ConfigItem<OptionString>,
-    pub default_push_behavior: ConfigItem<DefaultBehaviorOption>,
-    pub default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
 }
 
 impl<'de> Deserialize<'de> for ConfigData {
@@ -40,8 +36,6 @@ impl<'de> Deserialize<'de> for ConfigData {
             email: ConfigItem<String>,
             default_commit_message: ConfigItem<OptionString>,
             open_ai_api_key: ConfigItem<OptionString>,
-            default_push_behavior: ConfigItem<DefaultBehaviorOption>,
-            default_commit_behavior: ConfigItem<DefaultBehaviorOption>,
             api_host: ConfigItem<String>,
             open_ai_model: ConfigItem<OptionString>,
         }
@@ -54,8 +48,6 @@ impl<'de> Deserialize<'de> for ConfigData {
             name: inner.name,
             email: inner.email,
             default_commit_message: inner.default_commit_message,
-            default_push_behavior: inner.default_push_behavior,
-            default_commit_behavior: inner.default_commit_behavior,
             open_ai_api_key: inner.open_ai_api_key,
             api_host: inner.api_host,
             open_ai_model: inner.open_ai_model,
@@ -71,8 +63,6 @@ impl ConfigData {
         self.name.value.validate()?;
         self.email.value.validate()?;
         self.default_commit_message.value.validate()?;
-        self.default_push_behavior.value.validate()?;
-        self.default_commit_behavior.value.validate()?;
         Ok(())
     }
 
@@ -84,8 +74,6 @@ impl ConfigData {
             ConfigKey::Name => self.name.update(value)?,
             ConfigKey::Email => self.email.update(value)?,
             ConfigKey::DefaultCommitMessage => self.default_commit_message.update(value)?,
-            ConfigKey::DefaultPushBehavior => self.default_push_behavior.update(value)?,
-            ConfigKey::DefaultCommitBehavior => self.default_commit_behavior.update(value)?,
             ConfigKey::OpenAiApiKey => self.open_ai_api_key.update(value)?,
             ConfigKey::ApiHost => self.api_host.update(value)?,
             ConfigKey::OpenAiModel => self.open_ai_model.update(value)?,
@@ -101,8 +89,6 @@ impl ConfigData {
             ConfigKey::Name => self.name.get_value(),
             ConfigKey::Email => self.email.get_value(),
             ConfigKey::DefaultCommitMessage => self.default_commit_message.get_value(),
-            ConfigKey::DefaultPushBehavior => self.default_push_behavior.get_value(),
-            ConfigKey::DefaultCommitBehavior => self.default_push_behavior.get_value(),
             ConfigKey::OpenAiApiKey => self.open_ai_api_key.get_value(),
             ConfigKey::ApiHost => self.api_host.get_value(),
             ConfigKey::OpenAiModel => self.open_ai_model.get_value(),

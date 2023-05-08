@@ -1,13 +1,11 @@
 use strum::{Display, EnumIter, EnumString};
 
 mod config_item;
-mod default_behavior;
 mod default_language;
 mod option_string;
 
 pub use config_item::ConfigItem;
 pub use config_item::ConfigValue;
-pub use default_behavior::DefaultBehaviorOption;
 pub use default_language::DefaultLanguage;
 pub use option_string::OptionString;
 
@@ -31,8 +29,4 @@ pub enum ConfigKey {
     Email,
     #[strum(serialize = "default_commit_message")]
     DefaultCommitMessage,
-    #[strum(serialize = "default_push_behavior")]
-    DefaultPushBehavior,
-    #[strum(serialize = "default_commit_behavior")]
-    DefaultCommitBehavior,
 }
