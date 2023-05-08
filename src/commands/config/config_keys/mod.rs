@@ -27,6 +27,4 @@ pub enum ConfigKey {
     Name,
     #[strum(serialize = "email")]
     Email,
-    #[strum(serialize = "default_commit_message")]
-    DefaultCommitMessage,
 }
