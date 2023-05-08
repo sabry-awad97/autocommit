@@ -22,3 +22,21 @@ After Autocommit is installed, you can use the autocommit command to set up auto
 ```shell
 autocommit [SUBCOMMAND]
 ```
+
+### Subcommands
+
+The `config` subcommand
+
+Use the `config` command to set your preferences for autocommit.
+
+```shell
+autocommit config
+```
+
+The `commit` subcommand
+
+Use the `commit` command to create a new commit.
+
+```bash
+autocommit commit
+```
