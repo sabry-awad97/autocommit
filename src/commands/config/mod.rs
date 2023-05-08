@@ -20,26 +20,45 @@ mod config_service;
 pub enum ConfigCommand {
     #[structopt(name = "get")]
     Get {
-        #[structopt(name = "keys", short, long)]
+        #[structopt(name = "keys", short, long, help = "Configuration keys to retrieve")]
         keys: Vec<String>,
 
-        #[structopt(short, long, parse(from_os_str))]
+        #[structopt(
+            short,
+            long,
+            parse(from_os_str),
+            help = "Path to the configuration file"
+        )]
         config_path: Option<PathBuf>,
     },
 
     #[structopt(name = "set")]
     Set {
-        #[structopt(name = "key=value", required = true, min_values = 1)]
+        #[structopt(
+            name = "key=value",
+            required = true,
+            min_values = 1,
+            help = "Configuration keys and their new values to set"
+        )]
         key_values: Vec<String>,
 
-        #[structopt(short, long, parse(from_os_str))]
+        #[structopt(
+            short,
+            long,
+            parse(from_os_str),
+            help = "Path to the configuration file"
+        )]
         config_path: Option<PathBuf>,
     },
     #[structopt(name = "reset")]
     Reset,
     #[structopt(name = "env")]
     Env {
-        #[structopt(short, long)]
+        #[structopt(
+            short,
+            long,
+            help = "The shell for which to print environment variables. Options are: bash, fish, powershell"
+        )]
         shell: Option<String>,
     },
 }
