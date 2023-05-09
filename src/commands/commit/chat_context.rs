@@ -31,9 +31,8 @@ impl ChatContext {
         let mut system_message = vec![
             "You are a software developer and need to create a commit message for a git repository.",
             "Write a clear and concise git commit message that follows the imperative mood and starts with a specific action verb that clearly conveys the changes made (e.g. 'Implement', 'Refactor', 'Optimize', 'Fix', 'Add', 'Remove').",
-            "The first line should provide a brief summary of the changes in present tense, followed by a more detailed explanation in the second line that includes any necessary context or background information to help other developers understand the changes made.",
+            "Use present tense in your commit message to describe what the commit does, not what it did. For example, 'Add feature' instead of 'Added feature.'",
             "Avoid using technical jargon or acronyms that may be unfamiliar to other developers.",
-            "Multiple changes should be broken down into separate commits with individual messages.",
         ];
 
         if *emoji_enabled {
@@ -44,29 +43,23 @@ impl ChatContext {
         if *description_enabled {
             system_message.push("You should also provide a detailed explanation in the commit description, including any relevant context or reasoning behind the change. Specifically, you should:");
             system_message.push("Include a brief, descriptive summary of the changes made in the commit message");
-            system_message.push("Provide more detailed explanation in the commit description, including any relevant context or reasoning behind the change.");
+            system_message.push("Use the body to provide more details: The body of your commit message should provide more context and details about the changes you made. Be specific and use complete sentences. If there are any known issues or limitations, mention them here.");
             system_message.push("Start the commit description with a brief summary of the changes made, similar to the summary in the commit message.");
             system_message.push("Provide additional context or background information that might be helpful for other developers to understand why the changes were necessary.");
             system_message.push("If the changes fix a bug or issue, describe the symptoms of the bug and the steps taken to fix it.");
             system_message.push("If the changes are related to a feature enhancement, describe what the new feature does and why it was added.");
             system_message.push("If there were any particular challenges or obstacles that needed to be overcome to make these changes, mention them in the commit description.");
+            system_message.push("Use proper formatting, such as bullet points or numbered lists, to make your commit message easier to read and understand.");
+            system_message.push("Keep your commit message concise and to the point. If the changes are significant, consider breaking them up into smaller, more manageable commits.");
             system_message.push("The commit message should be under 72 characters and focused on a single change or set of related changes.");
         } else {
             system_message.push("Don't add any descriptions to the commit, only commit message.")
         }
-        system_message.push("If the change fixes a bug or issue, the type of change is a 'fix'.");
-        system_message.push(
-            "If the change adds a new feature or enhancement, the type of change is a 'feat'",
-        );
-        system_message.push("If the change modifies existing functionality, the type of change can be a 'refactor'.");
-        system_message.push("If the change modifies documentation, updates tests, or makes other minor changes, the type of change is a 'chore'.");
-        system_message.push(
-            "Use active voice and start with the type of change, such as fix, feat, refactor, etc.",
-        );
+        system_message.push("Use the right keywords to help identify the type of change you made. For example, 'fix' for bug fixes, 'add' for new features, 'refactor' for code refactoring, etc.");
+        system_message.push("Be consistent with your commit messages across your project. Use the same format and style to make it easier for others to read and understand your messages.");
 
         let lang = format!("Use {} to answer.", translation.language);
         system_message.push(&lang);
-        system_message.push("Be consistent with the formatting and structure of the commit message throughout the commit history.");
         let signed_of_line = format!(
             "Include a 'Signed-off-by: {} <{}>' line indicating the author of the commit.",
             name, email
