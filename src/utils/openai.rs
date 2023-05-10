@@ -70,7 +70,7 @@ impl Message {
 pub struct ChatCompletionChoice {
     pub index: u64,
     pub message: Message,
-    pub finish_reason: String,
+    pub finish_reason: Option<String>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
