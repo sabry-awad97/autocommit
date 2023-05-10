@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Context, Error};
 use derive_builder::Builder;
-use log::{debug, info};
+use log::{debug, info, warn};
 use reqwest::{header::HeaderValue, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
+use std::{fmt, str::FromStr, time::Duration};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OAIModel {
@@ -146,29 +146,58 @@ impl OpenAI {
 
     async fn send_request(&mut self, chat_request: &OAIRequest) -> Result<OAIResponse, Error> {
         let url = self.config.api_host.to_string() + "/v1/chat/completions";
-
-        let response = reqwest::Client::new()
-            .post(&url)
-            .header(
-                reqwest::header::CONTENT_TYPE,
-                HeaderValue::from_static("application/json"),
-            )
-            .bearer_auth(&self.config.openai_api_key)
-            .json(&chat_request)
-            .send()
-            .await
-            .with_context(|| format!("Failed to send request to {}", &url))?;
-
-        match response.status() {
-            StatusCode::OK => {
-                let response = response
-                    .json::<OAIResponse>()
-                    .await
-                    .map_err(|err| anyhow!("Failed to decode json response: {}", err))?;
-                Ok(response)
+        let mut retries = 0;
+    
+        loop {
+            let response = reqwest::Client::new()
+                .post(&url)
+                .header(
+                    reqwest::header::CONTENT_TYPE,
+                    HeaderValue::from_static("application/json"),
+                )
+                .bearer_auth(&self.config.openai_api_key)
+                .json(&chat_request)
+                .send()
+                .await
+                .with_context(|| format!("Failed to send request to api"))?;
+    
+            debug!("Request sent to {}", url);
+            match response.status() {
+                StatusCode::OK => {
+                    let response = response
+                        .json()
+                        .await
+                        .map_err(|err| anyhow!("Failed to decode json response: {}", err))?;
+                    info!("Request successful {:#?}", response);
+                    return Ok(response);
+                }
+                StatusCode::TOO_MANY_REQUESTS => {
+                    let error = anyhow!("Rate limit exceeded");
+                    return Err(error);
+                }
+                status_code if retries < 5 => {
+                    retries += 1;
+                    warn!(
+                        "Unexpected HTTP response: {:?} - Retrying ({}/{})...",
+                        status_code,
+                        retries,
+                        5
+                    );
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+                status_code => {
+                    let error_message = response
+                        .text()
+                        .await
+                        .unwrap_or_else(|err| format!("Unknown error: {}", err));
+                    let error = anyhow!(
+                        "Unexpected HTTP response: {:?} - {}",
+                        status_code,
+                        error_message
+                    );
+                    return Err(error);
+                }
             }
-            StatusCode::TOO_MANY_REQUESTS => Err(anyhow!("Rate limit exceeded")),
-            _ => Err(anyhow!("Unexpected HTTP response: {:?}", response.status())),
         }
     }
 
