@@ -24,6 +24,9 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     println!("{esc}c", esc = 27 as char);
+    env_logger::Builder::from_default_env()
+        .format_timestamp(None)
+        .init();
     intro("Autocommit");
 
     let cli = Cli::from_args();
