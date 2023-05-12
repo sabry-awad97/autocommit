@@ -148,7 +148,7 @@ Autocommit can be configured using a configuration file located at `~/.autocommi
 
 ### 🙈 Ignore files
 
-To ignore files from submission to OpenAI by creating a `.autoignore` file in your root directory. For example:
+To exclude files from being submitted to OpenAI, create a `.autoignore` file in your main directory. Here's an example:
 
 ```sh
 /target
