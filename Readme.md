@@ -81,7 +81,7 @@ Here are the available configuration keys that can be used with autocommit-confi
 
 - `description`: a boolean value that determines whether or not the user can add a description to commits.
 - `emoji`: a boolean value that determines whether or not emojis are allowed in commit messages.
-- `language`: specifies the default language for commit messages.
+- `language`: a string that specifies the default language for commit messages.
 - `name`: a string that stores the name of the Git user.
 - `email`: a string that stores the email address of the Git user.
 - `open_ai_api_key`: a string that stores an API key for OpenAI models.
