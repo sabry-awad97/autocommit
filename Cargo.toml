@@ -13,7 +13,6 @@ derive_builder = "0.12.0"
 dirs = "5.0.0"
 futures = "0.3.28"
 regex = "1.8.1"
-reqwest = { version = "0.11.16", features = ["json"] }
 serde = { version = "1.0.160", features = ["derive"] }
 structopt = "0.3.26"
 tokio = { version = "1.27.0", features = ["full"] }
@@ -28,6 +27,7 @@ prettytable-rs = "0.10.0"
 git2 = "0.17.1"
 ignore = "0.4.20"
 term_size = "0.3.2"
+surf = "2.3.2"
 
 [dev-dependencies]
 tempfile = "3.5.0"
