@@ -9,6 +9,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect};
 use log::{debug, info};
 use prettytable::{row, Table};
 use structopt::StructOpt;
+use textwrap::fill;
 
 use super::config::AutocommitConfig;
 
@@ -226,14 +227,15 @@ impl CommitCommand {
         let commit_messages = chat_context.generate_messages(config).await?;
         commit_spinner.stop("📝 Commit messages generated successfully");
 
-        outro("Commit messages\n");
+        outro(&"Commit messages\n".green());
 
         let mut table = Table::new();
-        table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+        table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
         table.add_row(row![bFg->"Index", bFg->"Message"]);
 
         for (i, commit_message) in commit_messages.iter().enumerate() {
-            table.add_row(row![i, commit_message]);
+            let wrapped_message = fill(commit_message, 80);
+            table.add_row(row![i, wrapped_message]);
         }
 
         table.printstd();

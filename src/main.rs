@@ -8,7 +8,7 @@ mod i18n;
 mod utils;
 
 use commands::{get_service, Command};
-use log::{error, info};
+use log::info;
 use term_size::dimensions;
 use utils::{intro, outro};
 #[derive(Debug, StructOpt)]
@@ -34,7 +34,6 @@ async fn main() {
         Command::ConfigCommand(config) => match config.run().await {
             Ok(_) => (),
             Err(e) => {
-                error!("{}", e);
                 handle_error(e);
             }
         },
@@ -42,7 +41,6 @@ async fn main() {
             let service = match get_service().await {
                 Ok(s) => s,
                 Err(e) => {
-                    error!("{}", e);
                     handle_error(e);
                     return;
                 }
@@ -51,7 +49,6 @@ async fn main() {
             match commit.run(service.get_config()).await {
                 Ok(_) => (),
                 Err(e) => {
-                    error!("{}", e);
                     handle_error(e);
                 }
             }

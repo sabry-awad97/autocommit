@@ -28,6 +28,7 @@ git2 = "0.17.1"
 ignore = "0.4.20"
 term_size = "0.3.2"
 surf = "2.3.2"
+textwrap = "0.16.0"
 
 [dev-dependencies]
 tempfile = "3.5.0"
