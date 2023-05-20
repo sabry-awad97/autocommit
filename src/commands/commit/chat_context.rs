@@ -92,6 +92,7 @@ impl ChatContext {
     pub async fn generate_messages(
         &mut self,
         config: &AutocommitConfig,
+        num_messages: usize,
     ) -> anyhow::Result<Vec<String>> {
         let open_ai_api_key = config
             .config_data
@@ -110,8 +111,6 @@ impl ChatContext {
             .open_ai_model
             .get_value_ref()
             .get_inner_value();
-
-        let num_messages: usize = 3;
 
         debug!("Generating commit messages...");
         let mut tasks = Vec::new();

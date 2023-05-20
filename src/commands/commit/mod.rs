@@ -19,6 +19,9 @@ mod chat_context;
 pub struct CommitCommand {
     #[structopt(short, long)]
     stage_all: bool,
+
+    #[structopt(short, long, default_value = "2")]
+    n: usize,
 }
 
 impl CommitCommand {
@@ -223,7 +226,7 @@ impl CommitCommand {
         chat_context.add_message(MessageRole::User, content.to_owned());
 
         commit_spinner.start("Generating the commit messages...");
-        let commit_messages = chat_context.generate_messages(config).await?;
+        let commit_messages = chat_context.generate_messages(config, self.n).await?;
         commit_spinner.stop("📝 Commit messages generated successfully");
 
         let mut table = Table::new();
