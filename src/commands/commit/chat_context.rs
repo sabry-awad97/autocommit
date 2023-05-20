@@ -101,7 +101,10 @@ impl ChatContext {
             .get_inner_value();
 
         if open_ai_api_key.is_none() {
-            return Err(anyhow!("Please set your OpenAI API key in the autocommit config file or as an environment variable"));
+            return Err(anyhow!(
+                    "Please set your OpenAI API key in the autocommit config file or as an environment variable. \
+                    You can set it in the config file by running `autocommit config set open_ai_api_key=<your_api_key>`."
+                ));
         }
 
         let open_ai_api_key = open_ai_api_key.unwrap();
@@ -114,18 +117,28 @@ impl ChatContext {
 
         debug!("Generating commit messages...");
         let mut tasks = Vec::new();
-        for _ in 0..num_messages {
+        for i in 0..num_messages {
             let messages = self.get_messages().clone();
             let open_ai_api_key = open_ai_api_key.clone();
             let api_host = api_host.clone();
             let open_ai_model = open_ai_model.clone();
             tasks.push(tokio::spawn(async move {
-                generate_message(&messages, &open_ai_api_key, &api_host, &open_ai_model).await
+                match generate_message(&messages, &open_ai_api_key, &api_host, &open_ai_model).await {
+                    Ok(message) => Ok(message),
+                    Err(error) => Err(anyhow!(
+                        "Failed to generate commit message {}: {}.",
+                        i, error
+                    )),
+                }
             }));
         }
 
         let results: Vec<Result<String, anyhow::Error>> = try_join_all(tasks).await?;
         let messages: Vec<String> = results.into_iter().filter_map(|r| r.ok()).collect();
+        if messages.is_empty() {
+            return Err(anyhow!("Failed to generate any commit messages."));
+        }
+
         info!("Commit messages generated");
         Ok(messages)
     }
