@@ -1,3 +1,4 @@
+use anyhow::Error;
 use colored::Colorize;
 use structopt::StructOpt;
 
@@ -34,7 +35,7 @@ async fn main() {
             Ok(_) => (),
             Err(e) => {
                 error!("{}", e);
-                outro(&format!("{} {}", "✖".red(), e));
+                handle_error(e);
             }
         },
         Command::CommitCommand(mut commit) => {
@@ -42,13 +43,7 @@ async fn main() {
                 Ok(c) => c,
                 Err(e) => {
                     error!("{}", e);
-                    let message = &format!("{} {}", "✖".red(), e);
-                    let lines: Vec<&str> = message.split('\n').collect();
-                    let longest_line = lines.iter().map(|line| line.len()).max().unwrap_or(0);
-                    let term_width = dimensions().unwrap_or((80, 24)).0;
-                    let separator_length = longest_line.min(term_width);
-                    let separator = "—".repeat(separator_length).red().bold();
-                    outro(&format!("\n{}\n{}\n{}", separator, message.red(), separator));
+                    handle_error(e);
                     return;
                 }
             };
@@ -57,14 +52,21 @@ async fn main() {
                 Ok(_) => (),
                 Err(e) => {
                     error!("{}", e);
-                    let message = &format!("{} {}", "✖".red(), e);
-                    let separator_length = 80;
-                    let separator = "—".repeat(separator_length).red().bold();
-                    outro(&format!("{}\n{}\n{}", separator, message, separator));
+                    handle_error(e);
                 }
             }
         }
     }
 
     info!("Autocommit finished successfully");
+}
+
+fn handle_error(e: Error) {
+    let message = &format!("{} {}", "✖".red(), e);
+    let lines: Vec<&str> = message.split('\n').collect();
+    let longest_line = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+    let term_width = dimensions().unwrap_or((80, 24)).0;
+    let separator_length = longest_line.min(term_width);
+    let separator = "—".repeat(separator_length).red().bold();
+    outro(&format!("\n{}\n{}\n{}", separator, message, separator));
 }
