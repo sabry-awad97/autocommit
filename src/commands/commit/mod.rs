@@ -227,7 +227,7 @@ impl CommitCommand {
         let commit_messages = chat_context.generate_messages(config).await?;
         commit_spinner.stop("📝 Commit messages generated successfully");
 
-        outro(&"Commit messages\n".green());
+        outro(&"Commit messages:".green());
 
         let mut table = Table::new();
         table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
