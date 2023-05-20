@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use colored::{Color, Colorize};
-use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect};
 use log::{debug, info};
 use structopt::StructOpt;
 
@@ -285,20 +285,19 @@ impl CommitCommand {
     }
 
     pub async fn prompt_for_selected_message(commit_messages: &[String]) -> anyhow::Result<String> {
-        let selection = Select::with_theme(&ColorfulTheme::default())
-            .with_prompt(format!("{}", "Select the message you want commit:".green()))
-            .items(commit_messages)
-            .interact_opt()?;
+        let index = Input::<String>::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!(
+                "{}",
+                "Enter the index (#) of the message you want to commit:".green()
+            ))
+            .validate_with(|input: &String| match input.parse::<usize>() {
+                Ok(index) if index < commit_messages.len() => Ok(()),
+                _ => Err("Invalid index".to_string()),
+            })
+            .interact_text()?;
 
-        if let Some(index) = selection {
-            if index >= commit_messages.len() {
-                anyhow::bail!("Index out of bounds");
-            }
-            let selected_message = commit_messages[index].clone();
-            Ok(selected_message)
-        } else {
-            return Err(anyhow!("No message selected for committing"));
-        }
+        let selected_message = commit_messages[index.parse::<usize>().unwrap()].clone();
+        Ok(selected_message)
     }
 
     pub async fn prompt_for_selected_files(
