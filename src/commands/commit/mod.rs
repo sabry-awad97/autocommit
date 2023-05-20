@@ -235,14 +235,17 @@ impl CommitCommand {
             "Autocommit Messages",
             Alignment::CENTER,
         )
-        .with_hspan(2)
+        .with_hspan(4)
         .with_style(Attr::ForegroundColor(color::GREEN))]);
         table.add_row(title_row);
-        table.add_row(row![bFb->"Index", bFb->"Message"]);
+        table.add_row(row![bFb->"Index", bFb->"Message", bFb->"Lines", bFb->"Chars"]);
 
         for (i, commit_message) in commit_messages.iter().enumerate() {
-            let wrapped_message = fill(commit_message, 80);
-            table.add_row(row![i, wrapped_message]);
+            let wrapped_message = fill(commit_message, 60);
+
+            let num_lines = wrapped_message.lines().count();
+            let num_chars = wrapped_message.chars().count();
+            table.add_row(row![i, wrapped_message, num_lines, num_chars]);
         }
 
         table.printstd();
