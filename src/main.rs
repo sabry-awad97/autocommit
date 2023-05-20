@@ -1,7 +1,6 @@
 use anyhow::Error;
 use colored::Colorize;
 use structopt::StructOpt;
-use textwrap::fill;
 
 mod commands;
 mod git;
@@ -10,6 +9,7 @@ mod utils;
 
 use commands::{get_service, Command};
 use log::info;
+use textwrap::fill;
 use utils::{intro, outro};
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -59,9 +59,11 @@ async fn main() {
 }
 
 fn handle_error(e: Error) {
-    let message = &format!("{} {}", "✖".red(), e);
-    let wrapped_message = fill(message, 80);
-    let separator_length = 80;
+    let message = &format!("{}  {}", "✖".red(), e);
+    let lines: Vec<&str> = message.split('\n').collect();
+    let longest_line = lines.iter().map(|line| line.len()).max().unwrap_or(0);
+    let separator_length = longest_line.min(80);
+    let wrapped_message = fill(message, separator_length);
     let separator = "—".repeat(separator_length).red().bold();
     outro(&format!(
         "\n{}\n{}\n{}",
