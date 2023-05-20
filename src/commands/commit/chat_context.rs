@@ -5,6 +5,7 @@ use crate::{
     utils::{Message, MessageRole},
 };
 use anyhow::anyhow;
+use futures::future::try_join_all;
 use lazy_static::lazy_static;
 use log::{debug, info};
 pub struct ChatContext {
@@ -88,7 +89,7 @@ impl ChatContext {
         context
     }
 
-    pub async fn generate_message(
+    pub async fn generate_messages(
         &mut self,
         config: &AutocommitConfig,
     ) -> anyhow::Result<Vec<String>> {
@@ -124,12 +125,10 @@ impl ChatContext {
             }));
         }
 
-        let mut results = Vec::new();
-        for task in tasks {
-            results.push(task.await??);
-        }
+        let results: Vec<Result<String, anyhow::Error>> = try_join_all(tasks).await?;
+        let messages: Vec<String> = results.into_iter().filter_map(|r| r.ok()).collect();
         info!("Commit messages generated");
-        Ok(results)
+        Ok(messages)
     }
 }
 

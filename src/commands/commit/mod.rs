@@ -4,9 +4,10 @@ use crate::{
     utils::{outro, spinner, MessageRole},
 };
 use anyhow::anyhow;
-use colored::{Color, Colorize};
+use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect};
 use log::{debug, info};
+use prettytable::{row, Table};
 use structopt::StructOpt;
 
 use super::config::AutocommitConfig;
@@ -222,27 +223,22 @@ impl CommitCommand {
         chat_context.add_message(MessageRole::User, content.to_owned());
 
         commit_spinner.start(GENERATING_MESSAGE);
-        let commit_messages = chat_context.generate_message(config).await?;
-        commit_spinner.stop("📝 Commit message generated successfully");
+        let commit_messages = chat_context.generate_messages(config).await?;
+        commit_spinner.stop("📝 Commit messages generated successfully");
 
-        let separator_length = 40;
-        let separator = "—"
-            .repeat(separator_length)
-            .color(Color::TrueColor {
-                r: 128,
-                g: 128,
-                b: 128,
-            })
-            .bold();
+        outro("Commit messages\n");
+
+        let mut table = Table::new();
+        table.set_format(*prettytable::format::consts::FORMAT_CLEAN);
+        table.add_row(row![bFg->"Index", bFg->"Message"]);
 
         for (i, commit_message) in commit_messages.iter().enumerate() {
-            outro(&format!(
-                "Commit message #{}:\n{}\n{}\n{}",
-                i, separator, commit_message, separator
-            ));
+            table.add_row(row![i, commit_message]);
         }
 
-        debug!("Commit message generated successfully");
+        table.printstd();
+
+        debug!("Commit messages generated successfully");
         Ok(commit_messages)
     }
 
@@ -288,7 +284,7 @@ impl CommitCommand {
         let index = Input::<String>::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
                 "{}",
-                "Enter the index (#) of the message you want to commit:".green()
+                "Enter the index of the message you want to commit:".green()
             ))
             .validate_with(|input: &String| match input.parse::<usize>() {
                 Ok(index) if index < commit_messages.len() => Ok(()),
