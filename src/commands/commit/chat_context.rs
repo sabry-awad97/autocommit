@@ -101,10 +101,10 @@ impl ChatContext {
             .get_inner_value();
 
         if open_ai_api_key.is_none() {
-            return Err(anyhow!(
+            anyhow::bail!(
                     "Please set your OpenAI API key in the autocommit config file or as an environment variable. \
                     You can set it in the config file by running `autocommit config set open_ai_api_key=<your_api_key>`."
-                ));
+                );
         }
 
         let open_ai_api_key = open_ai_api_key.unwrap();
@@ -123,11 +123,13 @@ impl ChatContext {
             let api_host = api_host.clone();
             let open_ai_model = open_ai_model.clone();
             tasks.push(tokio::spawn(async move {
-                match generate_message(&messages, &open_ai_api_key, &api_host, &open_ai_model).await {
+                match generate_message(&messages, &open_ai_api_key, &api_host, &open_ai_model).await
+                {
                     Ok(message) => Ok(message),
                     Err(error) => Err(anyhow!(
                         "Failed to generate commit message {}: {}.",
-                        i, error
+                        i,
+                        error
                     )),
                 }
             }));
