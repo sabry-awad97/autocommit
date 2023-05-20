@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use colored::{Color, Colorize};
-use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
+use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect, Select};
 use log::{debug, info};
 use structopt::StructOpt;
 
@@ -111,28 +111,24 @@ impl CommitCommand {
             let staged_diffs = GitRepository::get_staged_file_diffs(&staged_files)?;
 
             // Generate a commit message
-            let commit_message = self
-                .generate_autocommit_message(config, &staged_diffs)
+            let commit_messages: Vec<String> = self
+                .generate_autocommit_messages(config, &staged_diffs)
                 .await?;
 
             // Prompt the user to confirm the commit message
-            if let Ok(Some(new_message)) = self
-                .prompt_to_commit_changes(config, &staged_diffs, &commit_message)
-                .await
-            {
-                self.commit_changes(config, &new_message).await?;
-                // Prompt the user to confirm the push
-                if Self::prompt_for_push()? {
-                    // Prompt the user to select a remote repository
-                    if let Some(remote) = Self::prompt_for_remote().await? {
-                        // Pull changes from the remote repository if necessary
-                        if Self::prompt_for_pull(&remote)? {
-                            Self::pull_changes(&remote).await?;
-                        }
-                        // Push changes to the remote repository
-                        Self::push_changes(&remote).await?;
-                        info!("Autocommit process completed successfully");
+            let message = Self::prompt_for_selected_message(&commit_messages).await?;
+            self.commit_changes(config, &message).await?;
+            // Prompt the user to confirm the push
+            if Self::prompt_for_push()? {
+                // Prompt the user to select a remote repository
+                if let Some(remote) = Self::prompt_for_remote().await? {
+                    // Pull changes from the remote repository if necessary
+                    if Self::prompt_for_pull(&remote)? {
+                        Self::pull_changes(&remote).await?;
                     }
+                    // Push changes to the remote repository
+                    Self::push_changes(&remote).await?;
+                    info!("Autocommit process completed successfully");
                 }
             }
 
@@ -213,81 +209,20 @@ impl CommitCommand {
         Ok(())
     }
 
-    pub async fn prompt_to_commit_changes(
-        &self,
-        config: &AutocommitConfig,
-        staged_diffs: &[String],
-        commit_message: &str,
-    ) -> anyhow::Result<Option<String>> {
-        let mut message = commit_message.to_string();
-
-        loop {
-            let is_generate_new_message_confirmed_by_user =
-                Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt("Do you want to generate a new commit message?")
-                    .default(false)
-                    .interact()?;
-            if is_generate_new_message_confirmed_by_user {
-                let mut new_content = Vec::new();
-                new_content
-                    .push("Suggest a professional git commit message with gitmoji\n".to_string());
-                new_content.push("Exclude anything unnecessary such as the original translation — your entire response will be passed directly into git commit.\n".to_string());
-                for staged_diff in staged_diffs {
-                    new_content.push(staged_diff.clone());
-                }
-                message = self
-                    .generate_autocommit_message(config, &new_content)
-                    .await?;
-            } else {
-                break;
-            }
-        }
-
-        let preview_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt("Do you want to preview the changes before committing?")
-            .default(false)
-            .interact_opt()?
-            .unwrap_or(false);
-
-        if preview_confirmed_by_user {
-            outro(&format!(
-                "Staged diff:\n{}\n",
-                staged_diffs.join("").color(Color::TrueColor {
-                    r: 128,
-                    g: 128,
-                    b: 128
-                })
-            ));
-
-            let commit_confirmed_by_user = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt("Do you want to commit these changes?")
-                .default(true)
-                .interact_opt()?;
-
-            if let Some(false) = commit_confirmed_by_user {
-                outro("Commit cancelled, exiting...");
-                return Ok(None);
-            }
-        }
-
-        Ok(Some(message))
-    }
-
-    pub async fn generate_autocommit_message(
+    pub async fn generate_autocommit_messages(
         &self,
         config: &AutocommitConfig,
         content: &[String],
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<Vec<String>> {
         const GENERATING_MESSAGE: &str = "Generating the commit message...";
         let mut commit_spinner = spinner();
-        let commit_message;
 
         let mut chat_context = ChatContext::get_initial_context(config);
         let content = content.join("");
         chat_context.add_message(MessageRole::User, content.to_owned());
-        
+
         commit_spinner.start(GENERATING_MESSAGE);
-        commit_message = chat_context.generate_message(config).await?;
+        let commit_messages = chat_context.generate_message(config).await?;
         commit_spinner.stop("📝 Commit message generated successfully");
 
         let separator_length = 40;
@@ -300,12 +235,15 @@ impl CommitCommand {
             })
             .bold();
 
-        outro(&format!(
-            "Commit message:\n{}\n{}\n{}",
-            separator, commit_message, separator
-        ));
+        for (i, commit_message) in commit_messages.iter().enumerate() {
+            outro(&format!(
+                "Commit message #{}:\n{}\n{}\n{}",
+                i, separator, commit_message, separator
+            ));
+        }
+
         debug!("Commit message generated successfully");
-        Ok(commit_message)
+        Ok(commit_messages)
     }
 
     pub async fn prompt_to_continue() -> anyhow::Result<bool> {
@@ -343,6 +281,23 @@ impl CommitCommand {
         } else {
             outro("No remote repository selected, exiting...");
             Ok(None)
+        }
+    }
+
+    pub async fn prompt_for_selected_message(commit_messages: &[String]) -> anyhow::Result<String> {
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!("{}", "Select the message you want commit:".green()))
+            .items(commit_messages)
+            .interact_opt()?;
+
+        if let Some(index) = selection {
+            if index >= commit_messages.len() {
+                anyhow::bail!("Index out of bounds");
+            }
+            let selected_message = commit_messages[index].clone();
+            Ok(selected_message)
+        } else {
+            return Err(anyhow!("No message selected for committing"));
         }
     }
 

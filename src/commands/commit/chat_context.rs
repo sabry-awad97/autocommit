@@ -42,7 +42,9 @@ impl ChatContext {
 
         if *description_enabled {
             system_message.push("You should also provide a detailed explanation in the commit description, including any relevant context or reasoning behind the change. Specifically, you should:");
-            system_message.push("Include a brief, descriptive summary of the changes made in the commit message");
+            system_message.push(
+                "Include a brief, descriptive summary of the changes made in the commit message",
+            );
             system_message.push("Use the body to provide more details: The body of your commit message should provide more context and details about the changes you made. Be specific and use complete sentences. If there are any known issues or limitations, mention them here.");
             system_message.push("Start the commit description with a brief summary of the changes made, similar to the summary in the commit message.");
             system_message.push("Provide additional context or background information that might be helpful for other developers to understand why the changes were necessary.");
@@ -86,7 +88,10 @@ impl ChatContext {
         context
     }
 
-    pub async fn generate_message(&mut self, config: &AutocommitConfig) -> anyhow::Result<String> {
+    pub async fn generate_message(
+        &mut self,
+        config: &AutocommitConfig,
+    ) -> anyhow::Result<Vec<String>> {
         let open_ai_api_key = config
             .config_data
             .open_ai_api_key
@@ -98,24 +103,33 @@ impl ChatContext {
         }
 
         let open_ai_api_key = open_ai_api_key.unwrap();
-        let api_host = &config.config_data.api_host.get_value_ref();
+        let api_host = config.config_data.api_host.get_value_ref();
         let open_ai_model = &config
             .config_data
             .open_ai_model
             .get_value_ref()
             .get_inner_value();
 
-        debug!("Generating commit message...");
-        let commit_message = generate_message(
-            self.get_messages(),
-            &open_ai_api_key,
-            api_host,
-            open_ai_model,
-        )
-        .await?;
-        info!("Commit message generated: {}", &commit_message);
-        self.add_message(MessageRole::Assistant, commit_message.to_owned());
-        Ok(commit_message)
+        let num_messages: usize = 3;
+
+        debug!("Generating commit messages...");
+        let mut tasks = Vec::new();
+        for _ in 0..num_messages {
+            let messages = self.get_messages().clone();
+            let open_ai_api_key = open_ai_api_key.clone();
+            let api_host = api_host.clone();
+            let open_ai_model = open_ai_model.clone();
+            tasks.push(tokio::spawn(async move {
+                generate_message(&messages, &open_ai_api_key, &api_host, &open_ai_model).await
+            }));
+        }
+
+        let mut results = Vec::new();
+        for task in tasks {
+            results.push(task.await??);
+        }
+        info!("Commit messages generated");
+        Ok(results)
     }
 }
 
