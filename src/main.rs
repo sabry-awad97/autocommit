@@ -24,9 +24,7 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     println!("{esc}c", esc = 27 as char);
-    env_logger::Builder::from_default_env()
-        .format_timestamp(None)
-        .init();
+    env_logger::builder().init();
     intro("Autocommit");
 
     let cli = Cli::from_args();
@@ -50,12 +48,7 @@ async fn main() {
                     let term_width = dimensions().unwrap_or((80, 24)).0;
                     let separator_length = longest_line.min(term_width);
                     let separator = "—".repeat(separator_length).red().bold();
-                    outro(&format!(
-                        "{}\n{}\n{}",
-                        separator,
-                        message.red(),
-                        separator
-                    ));
+                    outro(&format!("\n{}\n{}\n{}", separator, message.red(), separator));
                     return;
                 }
             };
