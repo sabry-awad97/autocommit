@@ -51,7 +51,7 @@ async fn main() {
                     let separator_length = longest_line.min(term_width);
                     let separator = "—".repeat(separator_length).red().bold();
                     outro(&format!(
-                        "Commit message:\n{}\n{}\n{}",
+                        "{}\n{}\n{}",
                         separator,
                         message.red(),
                         separator
@@ -67,10 +67,7 @@ async fn main() {
                     let message = &format!("{} {}", "✖".red(), e);
                     let separator_length = 80;
                     let separator = "—".repeat(separator_length).red().bold();
-                    outro(&format!(
-                        "Commit message:\n{}\n{}\n{}",
-                        separator, message, separator
-                    ));
+                    outro(&format!("{}\n{}\n{}", separator, message, separator));
                 }
             }
         }
