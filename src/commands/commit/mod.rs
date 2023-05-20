@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect};
 use log::{debug, info};
-use prettytable::{row, Table};
+use prettytable::{color, format::Alignment, row, Attr, Cell, Row, Table};
 use structopt::StructOpt;
 use textwrap::fill;
 
@@ -228,8 +228,14 @@ impl CommitCommand {
 
         let mut table = Table::new();
         table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
-        table.add_row(row![bFg->"Autocommit Messages"]);
-        table.add_row(row![bFg->"Index", bFg->"Message"]);
+        let title_row = Row::new(vec![Cell::new_align(
+            "Autocommit Messages",
+            Alignment::CENTER,
+        )
+        .with_hspan(2)
+        .with_style(Attr::ForegroundColor(color::GREEN))]);
+        table.add_row(title_row);
+        table.add_row(row![bFb->"Index", bFb->"Message"]);
 
         for (i, commit_message) in commit_messages.iter().enumerate() {
             let wrapped_message = fill(commit_message, 80);

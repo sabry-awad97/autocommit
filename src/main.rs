@@ -10,7 +10,7 @@ mod utils;
 use commands::{get_service, Command};
 use log::info;
 use textwrap::fill;
-use utils::{intro, outro};
+use utils::intro;
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "autocommit",
@@ -65,8 +65,5 @@ fn handle_error(e: Error) {
     let separator_length = longest_line.min(80);
     let wrapped_message = fill(message, separator_length);
     let separator = "—".repeat(separator_length).red().bold();
-    outro(&format!(
-        "\n{}\n{}\n{}",
-        separator, wrapped_message, separator
-    ));
+    eprintln!("\n{}\n{}\n{}", separator, wrapped_message, separator);
 }
