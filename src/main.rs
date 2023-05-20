@@ -25,7 +25,7 @@ struct Cli {
 #[tokio::main]
 async fn main() {
     println!("{esc}c", esc = 27 as char);
-    env_logger::builder().init();
+    env_logger::init();
     intro("Autocommit");
 
     let cli = Cli::from_args();
@@ -40,7 +40,7 @@ async fn main() {
         },
         Command::CommitCommand(mut commit) => {
             let service = match get_service().await {
-                Ok(c) => c,
+                Ok(s) => s,
                 Err(e) => {
                     error!("{}", e);
                     handle_error(e);
