@@ -31,7 +31,6 @@ impl AutocommitConfig {
             language: ConfigItem::new(DefaultLanguage(Language::English)),
             name: ConfigItem::new(name),
             email: ConfigItem::new(email),
-            default_commit_message: ConfigItem::new(OptionString::default()),
             open_ai_api_key: ConfigItem::new(OptionString::default()),
             api_host: ConfigItem::new(String::from("https://api.openai.com")),
             open_ai_model: ConfigItem::new(OptionString::default()),

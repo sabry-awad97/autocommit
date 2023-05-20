@@ -282,28 +282,13 @@ impl CommitCommand {
         let mut commit_spinner = spinner();
         let commit_message;
 
-        match &config
-            .config_data
-            .default_commit_message
-            .get_value_ref()
-            .get_inner_value()
-        {
-            Some(default_message) => {
-                outro(&format!(
-                    "Using default commit message:\n{}\n",
-                    default_message
-                ));
-                commit_message = default_message.clone();
-            }
-            _ => {
-                commit_spinner.start(GENERATING_MESSAGE);
-                let mut chat_context = ChatContext::get_initial_context(config);
-                let content = content.join("");
-                chat_context.add_message(MessageRole::User, content.to_owned());
-                commit_message = chat_context.generate_message(config).await?;
-                commit_spinner.stop("📝 Commit message generated successfully");
-            }
-        }
+        let mut chat_context = ChatContext::get_initial_context(config);
+        let content = content.join("");
+        chat_context.add_message(MessageRole::User, content.to_owned());
+        
+        commit_spinner.start(GENERATING_MESSAGE);
+        commit_message = chat_context.generate_message(config).await?;
+        commit_spinner.stop("📝 Commit message generated successfully");
 
         let separator_length = 40;
         let separator = "—"

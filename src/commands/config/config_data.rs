@@ -14,7 +14,6 @@ pub struct ConfigData {
     pub language: ConfigItem<DefaultLanguage>,
     pub name: ConfigItem<String>,
     pub email: ConfigItem<String>,
-    pub default_commit_message: ConfigItem<OptionString>,
     pub open_ai_api_key: ConfigItem<OptionString>,
     pub api_host: ConfigItem<String>,
     pub open_ai_model: ConfigItem<OptionString>,
@@ -34,7 +33,6 @@ impl<'de> Deserialize<'de> for ConfigData {
             language: ConfigItem<DefaultLanguage>,
             name: ConfigItem<String>,
             email: ConfigItem<String>,
-            default_commit_message: ConfigItem<OptionString>,
             open_ai_api_key: ConfigItem<OptionString>,
             api_host: ConfigItem<String>,
             open_ai_model: ConfigItem<OptionString>,
@@ -47,7 +45,6 @@ impl<'de> Deserialize<'de> for ConfigData {
             language: inner.language,
             name: inner.name,
             email: inner.email,
-            default_commit_message: inner.default_commit_message,
             open_ai_api_key: inner.open_ai_api_key,
             api_host: inner.api_host,
             open_ai_model: inner.open_ai_model,
@@ -62,7 +59,6 @@ impl ConfigData {
         self.language.value.validate()?;
         self.name.value.validate()?;
         self.email.value.validate()?;
-        self.default_commit_message.value.validate()?;
         Ok(())
     }
 
