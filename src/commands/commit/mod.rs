@@ -216,21 +216,19 @@ impl CommitCommand {
         config: &AutocommitConfig,
         content: &[String],
     ) -> anyhow::Result<Vec<String>> {
-        const GENERATING_MESSAGE: &str = "Generating the commit message...";
         let mut commit_spinner = spinner();
 
         let mut chat_context = ChatContext::get_initial_context(config);
         let content = content.join("");
         chat_context.add_message(MessageRole::User, content.to_owned());
 
-        commit_spinner.start(GENERATING_MESSAGE);
+        commit_spinner.start("Generating the commit messages...");
         let commit_messages = chat_context.generate_messages(config).await?;
         commit_spinner.stop("📝 Commit messages generated successfully");
 
-        outro(&"Commit messages:".green());
-
         let mut table = Table::new();
         table.set_format(*prettytable::format::consts::FORMAT_BOX_CHARS);
+        table.add_row(row![bFg->"Autocommit Messages"]);
         table.add_row(row![bFg->"Index", bFg->"Message"]);
 
         for (i, commit_message) in commit_messages.iter().enumerate() {
