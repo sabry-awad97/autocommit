@@ -90,7 +90,7 @@ impl CommitCommand {
                 } else if !changed_files.is_empty() {
                     // Prompt the user to select files to stage
                     let files = Self::prompt_for_selected_files(&changed_files).await?;
-                    GitRepository::git_add(&files)?;
+                    GitRepository::git_add(&files).await?;
                     self.stage_all = false;
                     continue;
                 } else {

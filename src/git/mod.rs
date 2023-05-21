@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use colored::Colorize;
 use git2::{DiffOptions, Repository, RepositoryOpenFlags, Status, StatusOptions};
 use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
@@ -7,7 +6,6 @@ use ignore::{
 };
 use log::{debug, error};
 use prettytable::{Cell, Row, Table};
-use std::path::Path;
 mod commit_table;
 use tokio::process::Command;
 
@@ -173,31 +171,17 @@ impl GitRepository {
         Ok(diff_text)
     }
 
-    pub fn git_add(files: &[String]) -> anyhow::Result<()> {
-        let repo = Repository::open_from_env().map_err(|err| {
-            anyhow!(
-                "The current working directory is not a Git repository: {}",
-                err
-            )
-        })?;
-        let mut index = repo
-            .index()
-            .map_err(|err| anyhow!("Failed to open the Git index: {}", err))?;
+    pub async fn git_add(files: &[String]) -> anyhow::Result<()> {
+        let mut command = Command::new("git");
+        command.arg("add").args(files);
 
-        for file in files {
-            let path = Path::new(file);
-            if path.is_file() {
-                index.add_path(path).map_err(|err| {
-                    anyhow!("Failed to add file '{}' to the Git index: {}", file, err)
-                })?;
-            } else {
-                eprintln!("  {} '{}'", "Skipping directory".yellow(), file);
-            }
+        let mut child = command.spawn()?;
+
+        let status = child.wait().await?;
+
+        if !status.success() {
+            return Err(anyhow!("Command 'git add' failed"));
         }
-
-        index
-            .write()
-            .map_err(|err| anyhow!("Failed to write the Git index: {}", err))?;
 
         Ok(())
     }
