@@ -5,7 +5,7 @@ use ignore::{
     gitignore::{Gitignore, GitignoreBuilder},
     WalkBuilder,
 };
-use log::error;
+use log::{debug, error};
 use prettytable::{Cell, Row, Table};
 use std::path::Path;
 mod commit_table;
@@ -224,10 +224,15 @@ impl GitRepository {
 
     pub async fn git_commit(message: &str, name: &str, email: &str) -> anyhow::Result<String> {
         let repo = Repository::open_from_env()?;
-        let status = repo.statuses(None)?;
+        let statuses = repo.statuses(Some(StatusOptions::new().include_untracked(true)))?;
         let mut has_staged_changes = false;
-        for entry in status.iter() {
-            if entry.status() != git2::Status::CURRENT {
+        for entry in statuses.iter() {
+            debug!("File {:?} has status {:?}", entry.path(), entry.status());
+            if entry.status().intersects(
+                git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::INDEX_DELETED,
+            ) {
                 has_staged_changes = true;
                 break;
             }
