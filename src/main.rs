@@ -65,5 +65,5 @@ fn handle_error(e: Error) {
     let separator_length = longest_line.min(80);
     let wrapped_message = fill(message, separator_length);
     let separator = "—".repeat(separator_length).red().bold();
-    eprintln!("\n{}\n{}\n{}", separator, wrapped_message, separator);
+    eprintln!("{}\n{}\n{}", separator, wrapped_message, separator);
 }
