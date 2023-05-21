@@ -37,13 +37,14 @@ impl GitRepository {
         let statuses = repo.statuses(Some(&mut opts))?;
 
         let mut files = Vec::new();
-        for status in statuses.iter() {
-            let path = status.path().unwrap().to_string();
-            if status.status().contains(git2::Status::WT_MODIFIED)
-                || status.status().contains(git2::Status::INDEX_MODIFIED)
-                || status.status().contains(git2::Status::WT_NEW)
-                || status.status().contains(git2::Status::INDEX_NEW)
-            {
+        for entry in statuses.iter() {
+            let path = entry.path().unwrap().to_string();
+            if entry.status().intersects(
+                git2::Status::WT_MODIFIED
+                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::WT_NEW
+                    | git2::Status::INDEX_NEW,
+            ) {
                 files.push(path);
             }
         }
