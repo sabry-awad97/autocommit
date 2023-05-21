@@ -4,6 +4,7 @@ use crate::{
     utils::{outro, spinner, MessageRole},
 };
 use anyhow::anyhow;
+use clipboard::{ClipboardContext, ClipboardProvider};
 use colored::Colorize;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect};
 use log::{debug, info};
@@ -293,18 +294,35 @@ impl CommitCommand {
     }
 
     pub async fn prompt_for_selected_message(commit_messages: &[String]) -> anyhow::Result<String> {
-        let index = Input::<String>::with_theme(&ColorfulTheme::default())
+        let index = Input::<usize>::with_theme(&ColorfulTheme::default())
             .with_prompt(format!(
                 "{}",
                 "Enter the index of the message you want to commit:".green()
             ))
-            .validate_with(|input: &String| match input.parse::<usize>() {
-                Ok(index) if index < commit_messages.len() => Ok(()),
+            .validate_with(|input: &usize| match input {
+                index if *index < commit_messages.len() => Ok(()),
                 _ => Err("Invalid index".to_string()),
             })
-            .interact_text()?;
+            .interact()?;
 
-        let selected_message = commit_messages[index.parse::<usize>().unwrap()].clone();
+        let selected_message = commit_messages[index].clone();
+        let copy_to_clipboard = Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(format!(
+                "{}",
+                "Do you want to copy the selected message to clipboard?".green()
+            ))
+            .interact_opt()?
+            .unwrap_or(true);
+
+        if copy_to_clipboard {
+            let mut clipboard: ClipboardContext =
+                ClipboardProvider::new().map_err(|err| anyhow!(err.to_string()))?;
+            clipboard
+                .set_contents(selected_message.clone())
+                .map_err(|err| anyhow!(err.to_string()))?;
+            outro("Selected message copied to clipboard!");
+        }
+
         Ok(selected_message)
     }
 
