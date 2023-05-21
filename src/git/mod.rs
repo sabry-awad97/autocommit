@@ -89,18 +89,20 @@ impl GitRepository {
             )
         })?;
         let mut opts = StatusOptions::new();
-        opts.include_untracked(false);
+        opts.include_untracked(true);
         let statuses = repo.statuses(Some(&mut opts))?;
 
         let ignore_patterns = Self::get_ignore_patterns()?;
         let mut files = Vec::new();
-        for status in statuses.iter() {
-            let path = status.path().unwrap().to_string();
-            if (status.status().contains(Status::INDEX_MODIFIED)
-                || status.status().contains(Status::INDEX_NEW))
-                && ignore_patterns
-                    .matched_path_or_any_parents(&path, false)
-                    .is_none()
+        for entry in statuses.iter() {
+            let path = entry.path().unwrap().to_string();
+            if entry.status().intersects(
+                git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::INDEX_DELETED,
+            ) && ignore_patterns
+                .matched_path_or_any_parents(&path, false)
+                .is_none()
             {
                 files.push(path);
             }
