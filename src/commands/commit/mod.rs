@@ -21,7 +21,7 @@ pub struct CommitCommand {
     #[structopt(short, long)]
     stage_all: bool,
 
-    #[structopt(short, long, default_value = "2")]
+    #[structopt(short, long, default_value = "1")]
     n: usize,
 }
 
