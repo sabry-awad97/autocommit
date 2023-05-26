@@ -41,9 +41,9 @@ impl GitRepository {
             let path = entry.path().unwrap().to_string();
             if entry.status().intersects(
                 git2::Status::WT_MODIFIED
-                    | git2::Status::INDEX_MODIFIED
+                    | git2::Status::WT_DELETED
                     | git2::Status::WT_NEW
-                    | git2::Status::INDEX_NEW,
+                    | git2::Status::WT_TYPECHANGE,
             ) {
                 files.push(path);
             }
